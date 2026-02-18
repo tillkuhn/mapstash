@@ -87,8 +87,9 @@ Three configuration options (in order of preference):
    # server.port=4200
    # mapstash.mapbox.token=pk.your-token-here
    # spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
-   # spring.datasource.username=mapstash
-   # spring.datasource.password=mapstash
+   # spring.datasource.username=your-db-username
+   # spring.datasource.password=your-db-password
+   # (For default local setup, use 'mapstash' for both username and password)
    ```
 
 3. **Direct in application.properties (NOT for version control):**
