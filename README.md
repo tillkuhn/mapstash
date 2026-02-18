@@ -13,8 +13,8 @@ A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) 
 
 ## Technology Stack
 
-- **Backend**: Spring Boot 3.2.2 (Java 21)
-- **Build Tool**: Maven
+- **Backend**: Spring Boot 4.0.0 (Java 25)
+- **Build Tool**: Maven (via SDKMAN, no wrapper)
 - **Template Engine**: Thymeleaf
 - **Map Rendering**: Mapbox GL JS v3.1.0
 - **GPX Parsing**: io.jenetics:jpx library
@@ -22,8 +22,8 @@ A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) 
 
 ## Prerequisites
 
-- Java 21 or higher
-- Maven 3.6+
+- Java 25 or higher
+- Maven 3.6+ (installed via SDKMAN)
 - A Mapbox account and API token (free tier available)
 
 ## Getting Started
@@ -46,7 +46,7 @@ Then set it in one of these ways:
 export MAPBOX_TOKEN=your-token-here
 ```
 
-**Option B: Application Properties**
+**Option B: Local Properties File (Recommended for Development)**
 
 Copy the template and add your token:
 ```bash
@@ -55,8 +55,11 @@ cp src/main/resources/application-local.properties.template src/main/resources/a
 
 Edit `application-local.properties` and add your token:
 ```properties
+server.port=4200
 mapstash.mapbox.token=pk.your-actual-token-here
 ```
+
+> **Note**: The local profile automatically uses port 4200 for development. This profile is activated automatically when using `make run` or `mvn spring-boot:run -Dspring-boot.run.profiles=local`.
 
 **Option C: Direct Configuration**
 
@@ -67,17 +70,31 @@ mapstash.mapbox.token=pk.your-actual-token-here
 
 ### 3. Build the Application
 
+**Using Makefile (Recommended):**
 ```bash
-./mvnw clean package
+make build              # Build with tests
+make build-skip-tests   # Build without tests (faster)
+```
+
+**Using Maven directly:**
+```bash
+mvn clean package              # Build with tests
+mvn clean package -DskipTests  # Build without tests
 ```
 
 ### 4. Run the Application
 
+**Using Makefile (Recommended):**
 ```bash
-./mvnw spring-boot:run
+make run
 ```
 
-Or run the JAR file:
+**Using Maven directly:**
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+**Or run the JAR file:**
 ```bash
 java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 ```
@@ -86,8 +103,10 @@ java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 
 Open your browser and navigate to:
 ```
-http://localhost:8080
+http://localhost:4200
 ```
+
+> **Note**: Development uses port 4200 (local profile). Production deployments default to port 8080 unless configured otherwise.
 
 ## Usage
 
@@ -144,7 +163,7 @@ mapstash/
 Key configuration properties in `application.properties`:
 
 ```properties
-# Server port
+# Server port (default for production)
 server.port=8080
 
 # File upload limits
@@ -158,6 +177,22 @@ mapstash.upload.directory=uploads
 mapstash.mapbox.token=${MAPBOX_TOKEN:your-token-here}
 ```
 
+### Local Development Configuration
+
+When using the `local` profile (`application-local.properties`):
+
+```properties
+# Development server port
+server.port=4200
+
+# Mapbox token
+mapstash.mapbox.token=pk.your-actual-token-here
+```
+
+The local profile is automatically activated when using:
+- `make run`
+- `mvn spring-boot:run -Dspring-boot.run.profiles=local`
+
 ## API Endpoints
 
 - `GET /` - Home page with file list and upload form
@@ -168,12 +203,23 @@ mapstash.mapbox.token=${MAPBOX_TOKEN:your-token-here}
 
 ## Development
 
+### Quick Start Commands
+
+```bash
+make run                # Run with local profile (port 4200)
+make build              # Build JAR with tests
+make build-skip-tests   # Build JAR without tests
+make jar                # Alias for 'make build'
+```
+
 ### Hot Reload
 
 The application includes Spring Boot DevTools for automatic restart during development:
 
 ```bash
-./mvnw spring-boot:run
+make run
+# or
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Edit any Java file and it will automatically restart. Template changes are reflected immediately.
@@ -181,7 +227,13 @@ Edit any Java file and it will automatically restart. Template changes are refle
 ### Building for Production
 
 ```bash
-./mvnw clean package -DskipTests
+make build-skip-tests
+java -jar target/mapstash-0.1.0-SNAPSHOT.jar
+```
+
+Or with Maven:
+```bash
+mvn clean package -DskipTests
 java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 ```
 
@@ -201,7 +253,9 @@ java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 
 ### Port Already in Use
 
-Change the port in `application.properties`:
+For development, the local profile uses port 4200. For production, the default is 8080.
+
+Change the port in `application.properties` (production) or `application-local.properties` (development):
 ```properties
 server.port=8081
 ```

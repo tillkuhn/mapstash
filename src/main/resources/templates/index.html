@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MapStash - GPX File Manager</title>
+    <title>TiMaFe MapStash - GPX File Manager</title>
     <style>
         * {
             margin: 0;
@@ -211,12 +211,18 @@
             margin-bottom: 20px;
             opacity: 0.5;
         }
+
+        .description-input-wrapper textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>🗺️ MapStash</h1>
+        <h1>🗺️ TiMaFe MapStash</h1>
         <p>Store and visualize your GPX tracks</p>
     </div>
 
@@ -240,6 +246,20 @@
                 </label>
             </div>
             <span class="selected-file" id="selectedFile">No file selected</span>
+
+            <div class="description-input-wrapper" style="width: 100%; margin-top: 10px;">
+                <label for="description" style="display: block; margin-bottom: 5px; color: #4a5568; font-weight: 500;">
+                    Tour Description (optional)
+                </label>
+                <textarea
+                    name="description"
+                    id="description"
+                    rows="3"
+                    placeholder="Add notes about your tour (e.g., route highlights, weather, companions...)"
+                    style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: inherit; resize: vertical;">
+                </textarea>
+            </div>
+
             <button type="submit" class="btn btn-primary">Upload</button>
         </form>
     </div>
@@ -260,6 +280,10 @@
             <li th:each="file : ${files}" class="file-item">
                 <div class="file-info">
                     <div class="file-name" th:text="${file.originalFilename}"></div>
+                    <div class="file-description" th:if="${file.description != null and !file.description.isEmpty()}"
+                         th:text="${file.description}"
+                         style="color: #4a5568; font-size: 0.95em; margin: 5px 0; font-style: italic;">
+                    </div>
                     <div class="file-meta">
                         <span th:text="${#temporals.format(file.uploadDate, 'MMM dd, yyyy HH:mm')}"></span>
                         &middot;

@@ -2,4 +2,10 @@
 # Copy this template to application-local.properties and add your Mapbox token
 
 # Mapbox Token - Get yours from: https://account.mapbox.com/access-tokens/
+# Make sure that CORS URL restrictions match (e.g. http://localhost:4200)  https://docs.mapbox.com/accounts/guides/tokens/#url-restrictions
 mapstash.mapbox.token=pk.your-actual-token-here
+
+# Database Configuration (Local Development)
+spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
+spring.datasource.username=your-db-username
+spring.datasource.password=your-db-password

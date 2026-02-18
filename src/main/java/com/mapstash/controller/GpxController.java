@@ -33,13 +33,8 @@ public class GpxController {
      */
     @GetMapping("/")
     public String index(Model model) {
-        try {
-            List<GpxFile> files = fileStorageService.listFiles();
-            model.addAttribute("files", files);
-        } catch (IOException e) {
-            log.error("Error listing files", e);
-            model.addAttribute("error", "Error loading files: " + e.getMessage());
-        }
+        List<GpxFile> files = fileStorageService.listFiles();
+        model.addAttribute("files", files);
         return "index";
     }
 
@@ -48,6 +43,7 @@ public class GpxController {
      */
     @PostMapping("/upload")
     public String uploadFile(@RequestParam("file") MultipartFile file,
+                             @RequestParam(value = "description", required = false) String description,
                              RedirectAttributes redirectAttributes) {
         try {
             if (file.isEmpty()) {
@@ -55,7 +51,7 @@ public class GpxController {
                 return "redirect:/";
             }
 
-            GpxFile gpxFile = fileStorageService.storeFile(file);
+            GpxFile gpxFile = fileStorageService.storeFile(file, description);
             log.info("File uploaded successfully: {}", gpxFile.getOriginalFilename());
 
             redirectAttributes.addFlashAttribute("message",

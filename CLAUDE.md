@@ -8,6 +8,8 @@ MapStash is a Spring Boot application for storing and visualizing GPX (GPS Excha
 
 **Key Technologies:**
 - Spring Boot 4.0.0 with Java 25
+- PostgreSQL database with Spring Data JPA
+- Flyway for database migrations
 - Thymeleaf for server-side HTML rendering
 - Mapbox GL JS v3.1.0 (client-side map rendering in browser)
 - JPX library (`io.jenetics:jpx`) for GPX parsing
@@ -17,24 +19,36 @@ MapStash is a Spring Boot application for storing and visualizing GPX (GPS Excha
 - Maven via SDKMAN (no Maven wrapper used)
 - Use `mvn` commands directly, NOT `./mvnw`
 
+**Code Generation:**
+- Lombok used for reducing boilerplate code (`@Data`, `@Builder`, `@AllArgsConstructor`, etc.)
+- Requires IDE plugin (IntelliJ IDEA Lombok plugin, VS Code Lombok extension) for proper syntax support
+- Annotation processing configured in Maven compiler plugin
+
 ## Build & Run Commands
 
-### Development
+### Development (Preferred: Use Makefile)
 ```bash
-# Run with hot reload (DevTools enabled)
-mvn spring-boot:run
+# Run with hot reload (DevTools enabled) - uses local profile (port 4200)
+make run
+
+# Or use Maven directly
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 # Access application
-http://localhost:8080
+http://localhost:4200  # Local development (local profile active)
+http://localhost:8080  # Production default
 ```
 
 ### Build
 ```bash
-# Full build
-mvn clean package
+# Using Makefile (Preferred)
+make build              # Full build with tests
+make build-skip-tests   # Build without tests (faster)
+make jar                # Alias for 'make build'
 
-# Build without tests
-mvn clean package -DskipTests
+# Using Maven directly
+mvn clean package               # Full build
+mvn clean package -DskipTests   # Build without tests
 
 # Run the JAR
 java -jar target/mapstash-0.1.0-SNAPSHOT.jar
@@ -63,19 +77,55 @@ Three configuration options (in order of preference):
 1. **Environment Variable (Recommended for development):**
    ```bash
    export MAPBOX_TOKEN=pk.your-token-here
-   mvn spring-boot:run
+   make run
    ```
 
 2. **Local Properties File (Recommended for local config):**
    ```bash
    cp src/main/resources/application-local.properties.template src/main/resources/application-local.properties
-   # Edit application-local.properties and set: mapstash.mapbox.token=pk.your-token-here
+   # Edit application-local.properties and set:
+   # server.port=4200
+   # mapstash.mapbox.token=pk.your-token-here
+   # spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
+   # spring.datasource.username=mapstash
+   # spring.datasource.password=mapstash
    ```
 
 3. **Direct in application.properties (NOT for version control):**
    Edit `mapstash.mapbox.token` property (ensure it stays in .gitignore patterns)
 
 Get tokens from: https://account.mapbox.com/access-tokens/
+
+**Database Configuration:**
+
+The application requires PostgreSQL for storing GPX file metadata:
+
+1. **Database Setup:**
+   ```bash
+   # Create database and user (if not exists)
+   createdb mapstash_db
+   createuser mapstash
+   psql -c "ALTER USER mapstash WITH PASSWORD 'mapstash';"
+   psql -c "GRANT ALL PRIVILEGES ON DATABASE mapstash_db TO mapstash;"
+   ```
+
+2. **Configuration:**
+   - Database URL, username, and password can be set via environment variables:
+     - `DATABASE_URL` (default: `jdbc:postgresql://localhost:5432/mapstash_db`)
+     - `DATABASE_USER` (default: `mapstash`)
+     - `DATABASE_PASSWORD` (default: `mapstash`)
+   - Or configure in `application-local.properties` (see template)
+
+3. **Schema Management:**
+   - Flyway handles all database migrations automatically on startup
+   - Migration files located in `src/main/resources/db/migration`
+   - First run will create the `gpx_files` table with indexes
+   - `spring.flyway.baseline-on-migrate=true` allows working with existing schemas
+
+**Profile Configuration:**
+- **Local profile** (development): Activated via `make run` or `-Dspring-boot.run.profiles=local`, uses port 4200
+- **Production**: No profile needed, uses default port 8080
+- The local profile ensures development settings don't affect deployments
 
 ## Architecture
 
@@ -105,22 +155,36 @@ Browser → GpxController → Services → Response
 - Uses Jackson ObjectMapper to build GeoJSON programmatically
 
 **FileStorageService** (`service/FileStorageService.java`)
-- Filesystem-based storage (no database)
+- Hybrid storage: GPX files on filesystem, metadata in PostgreSQL database
 - UUID-based file naming: `{uuid}.gpx`
 - Storage location: `uploads/` directory (configurable via `mapstash.upload.directory`)
-- File metadata extracted from filesystem attributes
+- MD5 checksum calculation for duplicate detection on upload
+- File metadata persisted via `GpxFileRepository` (Spring Data JPA)
+
+**GpxFileRepository** (`repository/GpxFileRepository.java`)
+- Spring Data JPA repository for database operations
+- Provides `findByChecksum()` method for duplicate detection
+- Supports sorting by upload date for file listing
+
+**GpxFile** (`model/GpxFile.java`)
+- JPA entity mapped to `gpx_files` table
+- Stores: id, filename, originalFilename, fileSize, checksum, uploadDate, timestamps
+- `path` field is `@Transient` (not persisted, calculated from uploadDirectory + id + ".gpx")
+- Audit timestamps (`createdAt`, `updatedAt`) managed by JPA auditing
 
 ### Data Flow: GPX → GeoJSON → Map
 
-1. User uploads `.gpx` file → FileStorageService stores to disk
-2. Controller calls GpxService to parse file
-3. JPX library reads GPX XML → Java objects (GPX, Track, Route, WayPoint)
-4. GpxService converts to GeoJSON FeatureCollection with properties:
+1. User uploads `.gpx` file → FileStorageService calculates MD5 checksum
+2. Service checks database for duplicate by checksum (prevents re-upload)
+3. If unique, file stored to disk and metadata saved to PostgreSQL via JpaRepository
+4. Controller calls GpxService to parse file
+5. JPX library reads GPX XML → Java objects (GPX, Track, Route, WayPoint)
+6. GpxService converts to GeoJSON FeatureCollection with properties:
    - Tracks/Routes: LineString or MultiLineString with `type: "track"` or `type: "route"`
    - Waypoints: Point with `type: "waypoint"`, optional name/description
-5. GeoJSON passed to Thymeleaf template as model attribute
-6. Template embeds GeoJSON in `<script>` tag using `th:inline="javascript"`
-7. Client-side Mapbox GL JS renders map from GeoJSON
+7. GeoJSON passed to Thymeleaf template as model attribute
+8. Template embeds GeoJSON in `<script>` tag using `th:inline="javascript"`
+9. Client-side Mapbox GL JS renders map from GeoJSON
 
 ### Frontend Architecture
 
@@ -137,10 +201,13 @@ Browser → GpxController → Services → Response
 
 ### File Storage Model
 
-- Files stored by UUID, not original filename (prevents collisions)
-- No database: Metadata reconstructed from filesystem on each request
-- `GpxFile` model object created transiently, not persisted
-- File list sorted by upload date (descending) on retrieval
+- **Hybrid Storage Approach**: GPX files stored on filesystem, metadata in PostgreSQL database
+- **File Naming**: UUID-based (e.g., `{uuid}.gpx`) prevents collisions
+- **Duplicate Detection**: MD5 checksum calculated on upload, checked against database before storing
+- **Metadata Persistence**: `GpxFile` entity persisted via Spring Data JPA repository
+- **Transient Path Field**: `path` attribute calculated dynamically, not stored in database
+- **Audit Trail**: JPA auditing automatically tracks `createdAt` and `updatedAt` timestamps
+- **File Listing**: Sorted by `uploadDate` DESC, queried directly from database (no filesystem scan)
 
 ## API Endpoints
 
@@ -151,6 +218,24 @@ Browser → GpxController → Services → Response
 | GET | `/map/{fileId}` | Map visualization | Thymeleaf template |
 | POST | `/delete/{fileId}` | Delete file | Redirect to home |
 | GET | `/api/gpx/{fileId}` | Get GeoJSON | Raw JSON string |
+
+## Feature Development Workflow
+
+**PRD (Product Requirements Document):**
+- Feature requirements are tracked in **PRD.md** with unique IDs
+- When implementing features:
+  1. User references requirement by ID (e.g., "Implement REQ-001")
+  2. Implement the feature according to the description
+  3. Update status in PRD.md from ❌ Not Implemented to ✅ Implemented
+  4. Add commit reference in PRD.md when marking as implemented
+
+**Example workflow:**
+```bash
+# User requests: "Implement REQ-001"
+# 1. Read PRD.md to understand requirement
+# 2. Implement feature
+# 3. Update PRD.md status column to: ✅ Implemented (commit abc1234)
+```
 
 ## Development Patterns
 
@@ -192,6 +277,7 @@ Always use `th:inline="javascript"` and `/*[[${variable}]]*/` syntax for server-
 - **Java changes**: Auto-restart via Spring Boot DevTools
 - **Template changes**: Immediate (no restart) - refresh browser
 - **Properties changes**: Requires manual restart
+- **Local profile**: Automatically active when using `make run`
 
 ## Common Troubleshooting
 
@@ -209,10 +295,22 @@ Always use `th:inline="javascript"` and `/*[[${variable}]]*/` syntax for server-
 - Check GPX contains at least one track, route, or waypoint
 - Review logs for JPX parsing exceptions
 
+**Database connection errors:**
+- Verify PostgreSQL is running: `pg_isready`
+- Check database exists: `psql -l | grep mapstash_db`
+- Verify credentials in `application-local.properties`
+- Check Flyway migration logs on startup for schema issues
+
+**Duplicate upload errors:**
+- Application automatically detects duplicates via MD5 checksum
+- If same file uploaded again, existing record is returned (no error)
+- To force re-upload, delete existing file first
+
 ## Future Enhancement Areas
 
 See README.md "Future Enhancements" section. Priority areas:
-- Database integration for metadata persistence
+- ✅ Database integration for metadata persistence (REQ-008 - Implemented)
 - Track statistics calculation (distance, elevation gain)
 - Multi-track comparison on single map
 - User authentication and file ownership
+- Full-text search and filtering (requires database - now available)
