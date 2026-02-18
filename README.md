@@ -62,9 +62,11 @@ The application uses these environment variables (with defaults):
 Or configure in `application-local.properties`:
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
-spring.datasource.username=mapstash
-spring.datasource.password=mapstash
+spring.datasource.username=your-db-username
+spring.datasource.password=your-db-password
 ```
+
+> **Example**: For local development with the default setup from `make create-db`, use `mapstash` for both username and password.
 
 > **Note**: Flyway will automatically create and migrate the database schema on first run.
 
@@ -243,12 +245,14 @@ server.port=4200
 
 # Database configuration
 spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
-spring.datasource.username=mapstash
-spring.datasource.password=mapstash
+spring.datasource.username=your-db-username
+spring.datasource.password=your-db-password
 
 # Mapbox token
 mapstash.mapbox.token=pk.your-actual-token-here
 ```
+
+> **Note**: Replace `your-db-username` and `your-db-password` with your actual credentials. For the default local setup, these would both be `mapstash`.
 
 The local profile is automatically activated when using:
 - `make run`
