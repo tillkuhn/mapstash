@@ -14,6 +14,12 @@ build-skip-tests: ## Build Spring Boot JAR without tests
 
 jar: build ## Alias for build target
 
+test: ## Run unit tests
+	mvn test
+
+test-verbose: ## Run unit tests with verbose output
+	mvn test -X
+
 check-db: ## Check if db is running, used as precondition by other tasks such as bootRun
 	@pg_ctl -D $(PGDATA) status; if [ $$? -eq 3 ]; then \
 			echo "Starting Postgres Server with data dir $(PGDATA)"; pg_ctl -l $(PGDATA)/pg.log -D $(PGDATA) start; \
