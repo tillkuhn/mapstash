@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapStash - GPX File Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .upload-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #38a169;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+            font-size: 0.9em;
+            padding: 8px 16px;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .file-input-label {
+            padding: 12px 24px;
+            background: #4a5568;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #2d3748;
+        }
+
+        .selected-file {
+            color: #4a5568;
+            font-style: italic;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #f56565;
+        }
+
+        .files-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .files-list {
+            list-style: none;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s;
+        }
+
+        .file-item:hover {
+            background: #f7fafc;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .file-meta {
+            font-size: 0.9em;
+            color: #718096;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🗺️ MapStash</h1>
+        <p>Store and visualize your GPX tracks</p>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card upload-section">
+        <h2>Upload GPX File</h2>
+
+        <div th:if="${message}" class="alert alert-success">
+            <span th:text="${message}"></span>
+        </div>
+
+        <div th:if="${error}" class="alert alert-error">
+            <span th:text="${error}"></span>
+        </div>
+
+        <form method="POST" action="/upload" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+            <div class="file-input-wrapper">
+                <label class="file-input-label">
+                    Choose GPX File
+                    <input type="file" name="file" id="fileInput" accept=".gpx" required>
+                </label>
+            </div>
+            <span class="selected-file" id="selectedFile">No file selected</span>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    </div>
+
+    <!-- Files List Section -->
+    <div class="card files-section">
+        <h2>Your GPX Files</h2>
+
+        <div th:if="${files.isEmpty()}" class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p>No GPX files uploaded yet. Upload your first track to get started!</p>
+        </div>
+
+        <ul th:if="${!files.isEmpty()}" class="files-list">
+            <li th:each="file : ${files}" class="file-item">
+                <div class="file-info">
+                    <div class="file-name" th:text="${file.originalFilename}"></div>
+                    <div class="file-meta">
+                        <span th:text="${#temporals.format(file.uploadDate, 'MMM dd, yyyy HH:mm')}"></span>
+                        &middot;
+                        <span th:text="${#numbers.formatDecimal(file.fileSize / 1024.0, 1, 1)} + ' KB'"></span>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <a th:href="@{/map/{id}(id=${file.id})}" class="btn btn-secondary">View Map</a>
+                    <form method="POST" th:action="@{/delete/{id}(id=${file.id})}" style="display: inline;"
+                          onsubmit="return confirm('Are you sure you want to delete this file?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // Show selected file name
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file selected';
+        document.getElementById('selectedFile').textContent = fileName;
+    });
+</script>
+</body>
+</html>

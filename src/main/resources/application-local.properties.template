@@ -1,0 +1,5 @@
+# Local Configuration (not committed to Git)
+# Copy this template to application-local.properties and add your Mapbox token
+
+# Mapbox Token - Get yours from: https://account.mapbox.com/access-tokens/
+mapstash.mapbox.token=pk.your-actual-token-here

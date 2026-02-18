@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'MapStash - ' + ${filename}">MapStash - Map View</title>
+
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.css' rel='stylesheet'/>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1;
+            max-width: 300px;
+        }
+
+        .map-overlay h3 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+
+        .map-overlay p {
+            margin: 0;
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .mapboxgl-popup-content {
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .mapboxgl-popup-content h4 {
+            margin: 0 0 8px 0;
+            color: #2d3748;
+        }
+
+        .mapboxgl-popup-content p {
+            margin: 0;
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading map...</p>
+</div>
+
+<a href="/" class="back-button">← Back to Files</a>
+
+<div class="map-overlay">
+    <h3 th:text="${filename}">Track Name</h3>
+    <p>GPX Track Visualization</p>
+</div>
+
+<div id='map'></div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+
+    // Get data from Thymeleaf
+    const mapboxToken = /*[[${mapboxToken}]]*/ '';
+    const geoJsonData = /*[[${geoJson}]]*/ '';
+    const bounds = /*[[${bounds}]]*/ [];
+    const filename = /*[[${filename}]]*/ '';
+
+    // Parse GeoJSON
+    const geoJson = typeof geoJsonData === 'string' ? JSON.parse(geoJsonData) : geoJsonData;
+
+    // Initialize Mapbox
+    mapboxgl.accessToken = mapboxToken;
+
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/outdoors-v12',
+        center: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
+        zoom: 12
+    });
+
+    map.on('load', function () {
+        // Hide loading indicator
+        document.getElementById('loading').classList.add('hidden');
+
+        // Add GeoJSON source
+        map.addSource('gpx-data', {
+            type: 'geojson',
+            data: geoJson
+        });
+
+        // Add line layer for tracks and routes
+        map.addLayer({
+            id: 'gpx-lines',
+            type: 'line',
+            source: 'gpx-data',
+            filter: ['in', ['get', 'type'], ['literal', ['track', 'route']]],
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#667eea',
+                'line-width': 4,
+                'line-opacity': 0.8
+            }
+        });
+
+        // Add outline for better visibility
+        map.addLayer({
+            id: 'gpx-lines-outline',
+            type: 'line',
+            source: 'gpx-data',
+            filter: ['in', ['get', 'type'], ['literal', ['track', 'route']]],
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#ffffff',
+                'line-width': 6,
+                'line-opacity': 0.4
+            }
+        }, 'gpx-lines');
+
+        // Add circle layer for waypoints
+        map.addLayer({
+            id: 'gpx-waypoints',
+            type: 'circle',
+            source: 'gpx-data',
+            filter: ['==', ['get', 'type'], 'waypoint'],
+            paint: {
+                'circle-radius': 8,
+                'circle-color': '#f56565',
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#ffffff'
+            }
+        });
+
+        // Add labels for waypoints
+        map.addLayer({
+            id: 'gpx-waypoint-labels',
+            type: 'symbol',
+            source: 'gpx-data',
+            filter: ['==', ['get', 'type'], 'waypoint'],
+            layout: {
+                'text-field': ['get', 'name'],
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-size': 12,
+                'text-offset': [0, 1.5],
+                'text-anchor': 'top'
+            },
+            paint: {
+                'text-color': '#2d3748',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 2
+            }
+        });
+
+        // Fit map to bounds
+        if (bounds && bounds.length === 4) {
+            map.fitBounds(
+                [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
+                {padding: 50, maxZoom: 15}
+            );
+        }
+
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+        // Add scale control
+        map.addControl(new mapboxgl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }), 'bottom-left');
+
+        // Add fullscreen control
+        map.addControl(new mapboxgl.FullscreenControl(), 'bottom-right');
+
+        // Add popup on waypoint click
+        map.on('click', 'gpx-waypoints', function (e) {
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const properties = e.features[0].properties;
+
+            let description = '<h4>' + (properties.name || 'Waypoint') + '</h4>';
+            if (properties.description) {
+                description += '<p>' + properties.description + '</p>';
+            }
+
+            new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML(description)
+                .addTo(map);
+        });
+
+        // Change cursor on waypoint hover
+        map.on('mouseenter', 'gpx-waypoints', function () {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'gpx-waypoints', function () {
+            map.getCanvas().style.cursor = '';
+        });
+
+        // Add popup on line click with track name
+        map.on('click', 'gpx-lines', function (e) {
+            const properties = e.features[0].properties;
+            if (properties.name) {
+                new mapboxgl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setHTML('<h4>' + properties.name + '</h4>')
+                    .addTo(map);
+            }
+        });
+
+        map.on('mouseenter', 'gpx-lines', function () {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'gpx-lines', function () {
+            map.getCanvas().style.cursor = '';
+        });
+    });
+
+    // Handle map load errors
+    map.on('error', function (e) {
+        console.error('Map error:', e);
+        document.getElementById('loading').innerHTML =
+            '<p style="color: #f56565;">Error loading map. Please check your Mapbox token.</p>';
+    });
+
+    /*]]>*/
+</script>
+</body>
+</html>
