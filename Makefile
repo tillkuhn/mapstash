@@ -29,7 +29,12 @@ create-db: check-db ## Create database and user for local development
 	@psql -U $(LOGNAME) -e -d postgres -c "CREATE ROLE $(APPNAME) WITH LOGIN PASSWORD '$(APPNAME)';"
 	@psql -U $(LOGNAME) -e -d postgres -c "CREATE DATABASE $(APPNAME)_db OWNER $(APPNAME);"
 	@psql -U $(LOGNAME) -e -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE $(APPNAME)_db TO $(APPNAME);"
+	@psql -U $(LOGNAME) -e -d $(APPNAME)_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 	@echo "Database $(APPNAME)_db and user $(APPNAME) created"
+
+# THANK YOU: https://clews.id.au/posts/setting-up-postgresql-16-and-postgis-on-macos-with-homebrew/
+install-postgis: check-db ## Install PostGIS extension in the database (macOS only)
+	./scripts/install-postgis.sh
 
 # read https://stevenpg.com/posts/graalvm-reflect-config-demystified/
 # https://github.com/spring-projects/spring-boot/issues/42515 Document how and where to add custom GraalVM configuration file (Overwrite problem)

@@ -15,10 +15,40 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GpxService {
+
+    /**
+     * Extract start point (first track coordinate) as a JTS Point (SRID 4326)
+     * Defaults to POINT(0 0) if track/segment/point not found.
+     */
+    public Point extractStartPoint(Path gpxFilePath) throws IOException {
+        GPX gpx = GPX.read(gpxFilePath);
+        return gpx.getTracks().stream()
+            .flatMap(track -> track.getSegments().stream())
+            .flatMap(segment -> segment.getPoints().stream())
+            .findFirst()
+            .map(point -> {
+                GeometryFactory gf = new GeometryFactory();
+                Point pt = gf.createPoint(new Coordinate(point.getLongitude().doubleValue(), point.getLatitude().doubleValue()));
+                pt.setSRID(4326);
+                return pt;
+            })
+            .orElseGet(() -> {
+                GeometryFactory gf = new GeometryFactory();
+                Point pt = gf.createPoint(new Coordinate(0, 0));
+                pt.setSRID(4326);
+                return pt;
+            });
+    }
+
 
     private final ObjectMapper objectMapper;
 

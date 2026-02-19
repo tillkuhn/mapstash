@@ -1,6 +1,7 @@
 package com.mapstash.service;
 
 import com.mapstash.model.GpxFile;
+import org.locationtech.jts.geom.Point;
 import com.mapstash.repository.GpxFileRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -107,6 +108,7 @@ public class FileStorageService {
                 .fileSize(file.getSize())
                 .checksum(checksum)
                 .description(description)
+                .startPoint(gpxService.extractStartPoint(targetPath))
                 .build();
 
         gpxFile = repository.save(gpxFile);

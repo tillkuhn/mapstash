@@ -52,6 +52,9 @@ public class GpxFile {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(columnDefinition = "geometry(Point,4326)", nullable = false)
+    private org.locationtech.jts.geom.Point startPoint;
+
     @Transient
     private String path;
 }

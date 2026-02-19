@@ -181,7 +181,10 @@ Get tokens from: https://account.mapbox.com/access-tokens/
 
 **Database Configuration:**
 
-The application requires PostgreSQL for storing GPX file metadata:
+The application requires PostgreSQL with PostGIS enabled for storing GPX file metadata and spatial columns:
+- PostGIS extension is required and initialized automatically (see Flyway migration)
+- New `start_point` column in `gpx_files` enables spatial queries and mapping
+
 
 1. **Database Setup:**
    ```bash
