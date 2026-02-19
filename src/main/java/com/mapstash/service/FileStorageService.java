@@ -27,12 +27,15 @@ public class FileStorageService {
 
     private final Path uploadDirectory;
     private final GpxFileRepository repository;
+    private final GpxService gpxService;
 
     public FileStorageService(
             @Value("${mapstash.upload.directory:uploads}") String uploadDir,
-            GpxFileRepository repository) throws IOException {
+            GpxFileRepository repository,
+            GpxService gpxService) throws IOException {
         this.uploadDirectory = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.repository = repository;
+        this.gpxService = gpxService;
         Files.createDirectories(uploadDirectory);
         log.info("Upload directory initialized at: {}", uploadDirectory);
     }
@@ -81,11 +84,25 @@ public class FileStorageService {
         Files.copy(file.getInputStream(), targetPath);
         log.info("Stored file {} as {}", originalFilename, storedFilename);
 
+        // Extract name from GPX metadata or use filename without extension
+        String name;
+        try {
+            name = gpxService.extractName(targetPath);
+            if (name == null || name.trim().isEmpty()) {
+                // Fallback to filename without extension
+                name = originalFilename.replaceFirst("\\.gpx$", "");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract name from GPX metadata, using filename", e);
+            name = originalFilename.replaceFirst("\\.gpx$", "");
+        }
+
         // Save metadata to database
         GpxFile gpxFile = GpxFile.builder()
                 .id(fileId)
                 .filename(storedFilename)
                 .originalFilename(originalFilename)
+                .name(name)
                 .uploadDate(LocalDateTime.now())
                 .fileSize(file.getSize())
                 .checksum(checksum)

@@ -1,0 +1,57 @@
+# Multi-stage Docker build for GraalVM Native Image
+# This Dockerfile builds a native image and creates a minimal container
+
+# Stage 1: Build the native image
+FROM ghcr.io/graalvm/native-image:25 AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy Maven files first for better caching
+COPY pom.xml ./
+COPY .mvn .mvn
+COPY mvnw ./
+
+# Download dependencies (cached layer)
+RUN ./mvnw dependency:go-offline -B || true
+
+# Copy source code
+COPY src ./src
+
+# Build native image
+RUN ./mvnw -Pnative native:compile -DskipTests
+
+# Stage 2: Create minimal runtime image
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libz-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN useradd -m -u 1001 -s /bin/bash mapstash
+
+# Set working directory
+WORKDIR /app
+
+# Copy the native executable from builder
+COPY --from=builder /app/target/mapstash /app/mapstash
+
+# Create uploads directory
+RUN mkdir -p /app/uploads && chown -R mapstash:mapstash /app
+
+# Switch to non-root user
+USER mapstash
+
+# Expose port
+EXPOSE 8080
+
+# Set environment variables
+ENV MAPSTASH_UPLOAD_DIRECTORY=/app/uploads
+ENV SERVER_PORT=8080
+
+# Run the native executable
+ENTRYPOINT ["/app/mapstash"]

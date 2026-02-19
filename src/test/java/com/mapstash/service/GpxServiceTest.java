@@ -101,4 +101,74 @@ class GpxServiceTest {
             gpxService.convertToGeoJson(nonExistentFile);
         }, "Should throw IOException for non-existent file");
     }
+
+    @Test
+    void testExtractName_WithMetadataName() throws IOException {
+        // Create GPX file with metadata name
+        String gpxContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <gpx version="1.1" creator="MapStash Test"
+                     xmlns="http://www.topografix.com/GPX/1/1">
+                    <metadata>
+                        <name>My Amazing Hike</name>
+                    </metadata>
+                    <trk>
+                        <trkseg>
+                            <trkpt lat="52.5200" lon="13.4050"/>
+                        </trkseg>
+                    </trk>
+                </gpx>
+                """;
+
+        Path gpxFile = tempDir.resolve("test.gpx");
+        Files.writeString(gpxFile, gpxContent);
+
+        String name = gpxService.extractName(gpxFile);
+        assertEquals("My Amazing Hike", name, "Should extract metadata name");
+    }
+
+    @Test
+    void testExtractName_WithTrackName() throws IOException {
+        // Create GPX file with track name but no metadata
+        String gpxContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <gpx version="1.1" creator="MapStash Test"
+                     xmlns="http://www.topografix.com/GPX/1/1">
+                    <trk>
+                        <name>Mountain Trail</name>
+                        <trkseg>
+                            <trkpt lat="52.5200" lon="13.4050"/>
+                        </trkseg>
+                    </trk>
+                </gpx>
+                """;
+
+        Path gpxFile = tempDir.resolve("test.gpx");
+        Files.writeString(gpxFile, gpxContent);
+
+        String name = gpxService.extractName(gpxFile);
+        assertEquals("Mountain Trail", name, "Should extract track name");
+    }
+
+    @Test
+    void testExtractName_WithNoNames() throws IOException {
+        // Create GPX file without any names
+        String gpxContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <gpx version="1.1" creator="MapStash Test"
+                     xmlns="http://www.topografix.com/GPX/1/1">
+                    <trk>
+                        <trkseg>
+                            <trkpt lat="52.5200" lon="13.4050"/>
+                        </trkseg>
+                    </trk>
+                </gpx>
+                """;
+
+        Path gpxFile = tempDir.resolve("test.gpx");
+        Files.writeString(gpxFile, gpxContent);
+
+        String name = gpxService.extractName(gpxFile);
+        assertNull(name, "Should return null when no names are found");
+    }
 }

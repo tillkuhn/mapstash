@@ -38,6 +38,9 @@ public class GpxFile {
     @Column(length = 32, nullable = false)
     private String checksum;
 
+    @Column(nullable = false)
+    private String name;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

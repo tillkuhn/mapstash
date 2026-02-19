@@ -167,4 +167,33 @@ public class GpxService {
             point.getElevation().ifPresent(elevation -> coord.add(elevation.doubleValue()));
         });
     }
+
+    /**
+     * Extract name from GPX metadata
+     * Checks metadata first, then first track/route name, or returns null if not found
+     *
+     * @param gpxFilePath Path to the GPX file
+     * @return Name from GPX metadata or null
+     * @throws IOException if file cannot be read or parsed
+     */
+    public String extractName(Path gpxFilePath) throws IOException {
+        GPX gpx = GPX.read(gpxFilePath);
+
+        // Try metadata name first
+        if (gpx.getMetadata().isPresent() && gpx.getMetadata().get().getName().isPresent()) {
+            return gpx.getMetadata().get().getName().get();
+        }
+
+        // Try first track name
+        if (!gpx.getTracks().isEmpty() && gpx.getTracks().get(0).getName().isPresent()) {
+            return gpx.getTracks().get(0).getName().get();
+        }
+
+        // Try first route name
+        if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().get(0).getName().isPresent()) {
+            return gpx.getRoutes().get(0).getName().get();
+        }
+
+        return null;
+    }
 }

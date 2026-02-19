@@ -37,3 +37,11 @@ build/
 application-local.properties
 data/
 .claude/
+
+### GraalVM Native Image ###
+*.so
+*.dylib
+*.dll
+/target/mapstash
+/target/mapstash.exe
+.DS_Store

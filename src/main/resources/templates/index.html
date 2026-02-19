@@ -223,7 +223,7 @@
 <div class="container">
     <div class="header">
         <h1>🗺️ TiMaFe MapStash</h1>
-        <p>Store and visualize your GPX tracks</p>
+        <p>Store and visualize your exciting GPX tours</p>
     </div>
 
     <!-- Upload Section -->
@@ -279,12 +279,14 @@
         <ul th:if="${!files.isEmpty()}" class="files-list">
             <li th:each="file : ${files}" class="file-item">
                 <div class="file-info">
-                    <div class="file-name" th:text="${file.originalFilename}"></div>
+                    <div class="file-name" th:text="${file.name}"></div>
                     <div class="file-description" th:if="${file.description != null and !file.description.isEmpty()}"
                          th:text="${file.description}"
                          style="color: #4a5568; font-size: 0.95em; margin: 5px 0; font-style: italic;">
                     </div>
                     <div class="file-meta">
+                        <span th:text="${file.originalFilename}"></span>
+                        &middot;
                         <span th:text="${#temporals.format(file.uploadDate, 'MMM dd, yyyy HH:mm')}"></span>
                         &middot;
                         <span th:text="${#numbers.formatDecimal(file.fileSize / 1024.0, 1, 1)} + ' KB'"></span>

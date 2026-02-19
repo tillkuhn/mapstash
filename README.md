@@ -277,6 +277,8 @@ make build-skip-tests   # Build JAR without tests
 make jar                # Alias for 'make build'
 make test               # Run unit tests
 make test-verbose       # Run tests with verbose output
+make native             # Build GraalVM native image
+make native-test        # Run tests in native mode
 ```
 
 ### Testing
@@ -325,6 +327,7 @@ Edit any Java file and it will automatically restart. Template changes are refle
 
 ### Building for Production
 
+**Standard JAR Build:**
 ```bash
 make build-skip-tests
 java -jar target/mapstash-0.1.0-SNAPSHOT.jar
@@ -335,6 +338,43 @@ Or with Maven:
 mvn clean package -DskipTests
 java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 ```
+
+**GraalVM Native Image Build:**
+
+For faster startup times and lower memory footprint, you can build a native executable:
+
+Prerequisites:
+- GraalVM 25 installed (recommended: use SDKMAN)
+  ```bash
+  sdk install java 25.0.2-graalce
+  sdk use java 25.0.2-graalce
+  ```
+
+Build native image:
+```bash
+# Using Makefile (recommended)
+make native
+
+# Or with Maven directly
+mvn -Pnative native:compile
+```
+
+The native executable will be created at `target/mapstash` and can be run directly:
+```bash
+./target/mapstash
+```
+
+**Native Image Benefits:**
+- ⚡ **Fast Startup**: Starts in milliseconds instead of seconds
+- 💾 **Low Memory**: Significantly reduced memory footprint
+- 📦 **Single Binary**: No JVM required on the target system
+- 🚀 **Production Ready**: Ideal for containerized deployments
+
+**Native Image Considerations:**
+- Initial build takes longer (5-10 minutes)
+- Requires more memory during build (8GB recommended)
+- Some reflection-based features may require configuration
+- Testing native builds: `make native-test`
 
 ## Troubleshooting
 

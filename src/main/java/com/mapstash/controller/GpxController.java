@@ -1,6 +1,7 @@
 package com.mapstash.controller;
 
 import com.mapstash.model.GpxFile;
+import com.mapstash.repository.GpxFileRepository;
 import com.mapstash.service.FileStorageService;
 import com.mapstash.service.GpxService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class GpxController {
 
     private final FileStorageService fileStorageService;
     private final GpxService gpxService;
+    private final GpxFileRepository gpxFileRepository;
 
     @Value("${mapstash.mapbox.token}")
     private String mapboxToken;
@@ -72,6 +74,10 @@ public class GpxController {
     @GetMapping("/map/{fileId}")
     public String viewMap(@PathVariable String fileId, Model model) {
         try {
+            // Fetch GpxFile from database to get the name
+            GpxFile gpxFile = gpxFileRepository.findById(fileId)
+                    .orElseThrow(() -> new IllegalArgumentException("File not found: " + fileId));
+
             Path gpxFilePath = fileStorageService.getFilePath(fileId);
 
             if (!Files.exists(gpxFilePath)) {
@@ -83,7 +89,7 @@ public class GpxController {
             double[] bounds = gpxService.calculateBounds(gpxFilePath);
 
             model.addAttribute("fileId", fileId);
-            model.addAttribute("filename", gpxFilePath.getFileName().toString());
+            model.addAttribute("filename", gpxFile.getName()); // Use name instead of filename
             model.addAttribute("geoJson", geoJson);
             model.addAttribute("bounds", bounds);
             model.addAttribute("mapboxToken", mapboxToken);
