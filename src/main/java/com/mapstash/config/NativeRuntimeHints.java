@@ -19,6 +19,9 @@ import java.util.List;
  * This is the recommended Spring Boot Native approach instead of using legacy
  * reflect-config.json files, as Spring's AOT process would overwrite custom
  * reachability-metadata.json files.
+ *
+ * see AOT hints documentation: <a href="https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/#aot-hints">...</a>
+ * see <a href="https://github.com/spring-projects/spring-boot/issues/42515">...</a>
  */
 @Configuration
 @ImportRuntimeHints(NativeRuntimeHints.ThymeleafReflectionHints.class)
