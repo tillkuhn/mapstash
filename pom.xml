@@ -150,9 +150,10 @@
                         </configuration>
                     </plugin>
                     <plugin>
+                        <!-- https://www.graalvm.org/latest/reference-manual/native-image/guides/use-reachability-metadata-repository-maven/ -->
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>0.10.3</version>
+                        <version>0.11.4</version>
                         <extensions>true</extensions>
                         <executions>
                             <execution>
@@ -164,6 +165,10 @@
                             </execution>
                         </executions>
                         <configuration>
+                            <!-- https://graalvm.github.io/native-build-tools/0.9.13/maven-plugin.html#metadata-support -->
+                            <metadataRepository>
+                                <enabled>true</enabled>
+                            </metadataRepository>
                             <imageName>mapstash</imageName>
                             <mainClass>com.mapstash.MapStashApplication</mainClass>
                             <buildArgs>
