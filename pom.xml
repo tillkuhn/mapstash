@@ -73,6 +73,7 @@
         </dependency>
 
         <!-- Spring Boot DevTools for hot reload -->
+        <!-- NOTE: Not included in native builds - see native profile -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -124,8 +125,30 @@
         <!-- GraalVM Native Image profile -->
         <profile>
             <id>native</id>
+            <dependencies>
+                <!-- Exclude DevTools from native builds (not compatible with GraalVM) -->
+                <!-- See: https://github.com/spring-projects/spring-boot/issues/32853 -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-devtools</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
+                    <!-- Spring Boot Maven Plugin for native -->
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
@@ -148,7 +171,7 @@
                                 <buildArg>--verbose</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                 <!-- Configure memory for native image build -->
-                                <buildArg>-J-Xmx8g</buildArg>
+                                <buildArg>-J-Xmx12g</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

@@ -34,6 +34,7 @@ create-db: check-db ## Create database and user for local development
 native: ## Build GraalVM native image (requires GraalVM)
 	@echo "Building native image with GraalVM..."
 	@echo "Note: This requires GraalVM 25 to be installed (use: sdk install java 25.0.2-graalce)"
+	@echo "sdk use java 25.0.2-graalce"
 	mvn -Pnative native:compile
 
 native-test: ## Run tests with native image
