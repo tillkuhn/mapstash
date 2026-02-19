@@ -66,6 +66,88 @@ mvn test -Dtest=GpxServiceTest
 mvn test -Dtest=GpxServiceTest#testConvertToGeoJson
 ```
 
+### GraalVM Native Image Build
+
+**IMPORTANT: This project supports GraalVM Native Image compilation for fast startup and low memory footprint.**
+
+**Prerequisites:**
+```bash
+# Install GraalVM 25+ via SDKMAN
+sdk install java 25.0.2-graalce
+sdk use java 25.0.2-graalce
+
+# CRITICAL: Export JAVA_HOME explicitly for Maven
+export JAVA_HOME=/Users/tillkuhn/.sdkman/candidates/java/25.0.2-graalce
+```
+
+**Build Native Image:**
+```bash
+# Full build with native compilation (takes ~90 seconds)
+export JAVA_HOME=/Users/tillkuhn/.sdkman/candidates/java/25.0.2-graalce
+mvn clean package -Pnative -DskipTests
+
+# Output: target/mapstash (executable, ~154MB)
+```
+
+**Run Native Image:**
+```bash
+./target/mapstash
+# Application starts on port 8080 (production default)
+```
+
+**Native Image Benefits:**
+- ⚡ Fast startup: ~0.1 seconds (vs ~3 seconds JVM)
+- 💾 Low memory: ~50-100MB RSS (vs ~300-500MB JVM)
+- 📦 Single executable: No JVM installation required
+
+**Reflection Configuration:**
+
+The application uses Thymeleaf templates which require reflection for dynamic method calls (e.g., `${list.isEmpty()}`).
+
+**✅ CORRECT APPROACH (Spring Boot Native):**
+
+Use `RuntimeHintsRegistrar` to register reflection hints programmatically:
+
+- **Location**: `src/main/java/com/mapstash/config/NativeRuntimeHints.java`
+- **Why**: Spring Boot's AOT process generates its own `reachability-metadata.json` and would overwrite custom JSON files
+- **Benefit**: Type-safe, IDE-friendly, integrates with Spring's native image processing
+
+**Current configuration** registers reflection for: `ArrayList`, `List`, `Collection`, `Iterable`, `String`, `CharSequence`
+
+**Adding New Reflection Requirements:**
+
+If you encounter `MissingReflectionRegistrationError` at runtime:
+
+1. Add the type to `NativeRuntimeHints.java`:
+   ```java
+   hints.reflection()
+       .registerType(YourClass.class,
+           MemberCategory.INVOKE_PUBLIC_METHODS);
+   ```
+
+2. Rebuild the native image (hints are processed at compile time)
+
+**❌ AVOID: Manual JSON configuration files**
+
+Do NOT create `reflect-config.json` or `reachability-metadata.json` in `META-INF/native-image/` - Spring Boot's AOT process either ignores them or overwrites them. Use `RuntimeHintsRegistrar` instead.
+
+**Troubleshooting Native Build:**
+
+- **Maven can't find native-image**: Ensure `JAVA_HOME` points to GraalVM distribution
+  ```bash
+  echo $JAVA_HOME
+  $JAVA_HOME/bin/native-image --version  # Should show GraalVM version
+  ```
+
+- **Reflection errors at runtime**: Add missing classes to `reflect-config.json` and rebuild
+
+- **Build runs out of memory**: Increase heap in `pom.xml` native profile:
+  ```xml
+  <buildArg>-J-Xmx16g</buildArg>
+  ```
+
+- **Resource not found errors**: Add patterns to `resource-config.json` in same directory
+
 ## Configuration Requirements
 
 **CRITICAL: Mapbox Token Required**

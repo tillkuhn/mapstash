@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.0.1</version>
         <relativePath/>
     </parent>
 
@@ -148,12 +148,20 @@
                                 </exclude>
                             </excludes>
                         </configuration>
+                        <executions>
+                            <execution>
+                                <id>process-aot</id>
+                                <goals>
+                                    <goal>process-aot</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                     <plugin>
                         <!-- https://www.graalvm.org/latest/reference-manual/native-image/guides/use-reachability-metadata-repository-maven/ -->
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>0.11.4</version>
+                        <!--<version>0.11.4</version> -->
                         <extensions>true</extensions>
                         <executions>
                             <execution>
@@ -176,7 +184,7 @@
                                 <buildArg>--verbose</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                 <!-- Configure memory for native image build -->
-                                <buildArg>-J-Xmx12g</buildArg>
+                                <buildArg>-J-Xmx16g</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>
@@ -192,7 +200,7 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>0.10.3</version>
+                        <version>0.11.4</version>
                         <extensions>true</extensions>
                         <executions>
                             <execution>

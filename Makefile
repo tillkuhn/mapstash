@@ -31,10 +31,22 @@ create-db: check-db ## Create database and user for local development
 	@psql -U $(LOGNAME) -e -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE $(APPNAME)_db TO $(APPNAME);"
 	@echo "Database $(APPNAME)_db and user $(APPNAME) created"
 
+# read https://stevenpg.com/posts/graalvm-reflect-config-demystified/
+# https://github.com/spring-projects/spring-boot/issues/42515 Document how and where to add custom GraalVM configuration file (Overwrite problem)
+# java -agentlib:native-image-agent=config-merge-dir=./config -jar target/mapstash/0.0.1-SNAPSHOT.jar
+# mvn -Pnative spring-boot:build-image
+#mvn -Pnative spring-boot:build-image
+#The issue was that having both configuration files could cause GraalVM to ignore one of them or merge them incorrectly. The unified reachability-metadata.json
+#format is the correct approach for GraalVM 25.
+#After rebuilding, test the native image again. If you still encounter issues with other methods, you can run the native image with the tracing agent to
+#capture all reflection usage:
+#java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image/com.mapstash/mapstash -jar target/mapstash-0.1.0-SNAPSHOT.jar
+#This would generate comprehensive configuration files based on actual runtime usage
 native: ## Build GraalVM native image (requires GraalVM)
 	@echo "Building native image with GraalVM..."
 	@echo "Note: This requires GraalVM 25 to be installed (use: sdk install java 25.0.2-graalce)"
 	@echo "sdk use java 25.0.2-graalce"
+	@java --version
 	mvn -Pnative native:compile
 
 native-test: ## Run tests with native image
