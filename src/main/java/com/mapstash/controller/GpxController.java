@@ -133,4 +133,44 @@ public class GpxController {
 
         return gpxService.convertToGeoJson(gpxFilePath);
     }
+
+    // Overview map of all start points
+    @GetMapping("/overview")
+    public String overview(Model model) {
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.node.ObjectNode featureCollection = objectMapper.createObjectNode();
+        featureCollection.put("type", "FeatureCollection");
+        com.fasterxml.jackson.databind.node.ArrayNode features = featureCollection.putArray("features");
+        java.util.DoubleSummaryStatistics lonStats = new java.util.DoubleSummaryStatistics();
+        java.util.DoubleSummaryStatistics latStats = new java.util.DoubleSummaryStatistics();
+        for (GpxFile file : gpxFileRepository.findAll()) {
+            org.locationtech.jts.geom.Point pt = file.getStartPoint();
+            if (pt == null) continue;
+            double lon = pt.getX();
+            double lat = pt.getY();
+            if (lon == 0.0 && lat == 0.0) continue;
+            lonStats.accept(lon);
+            latStats.accept(lat);
+            com.fasterxml.jackson.databind.node.ObjectNode feature = objectMapper.createObjectNode();
+            feature.put("type", "Feature");
+            com.fasterxml.jackson.databind.node.ObjectNode geometry = feature.putObject("geometry");
+            geometry.put("type", "Point");
+            com.fasterxml.jackson.databind.node.ArrayNode coordinates = geometry.putArray("coordinates");
+            coordinates.add(lon); coordinates.add(lat);
+            com.fasterxml.jackson.databind.node.ObjectNode properties = feature.putObject("properties");
+            properties.put("fileId", file.getId());
+            properties.put("name", file.getName());
+            if (file.getDescription() != null && !file.getDescription().isEmpty())
+                properties.put("description", file.getDescription());
+            features.add(feature);
+        }
+        double[] bounds = (lonStats.getCount() > 0 && latStats.getCount() > 0) ? new double[] {lonStats.getMin(), latStats.getMin(), lonStats.getMax(), latStats.getMax()} : new double[] {0,0,0,0};
+        String geoJsonString = featureCollection.toString();
+        boolean hasGeoFeatures = features.size() > 0;
+        model.addAttribute("geoJson", geoJsonString);
+        model.addAttribute("hasGeoFeatures", hasGeoFeatures);
+        model.addAttribute("bounds", bounds);
+        model.addAttribute("mapboxToken", mapboxToken);
+        return "overview";
+    }
 }

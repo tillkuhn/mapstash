@@ -6,8 +6,11 @@ help: ## Display this help
 run: ## mvn spring-boot:run with local profile
 	mvn spring-boot:run -Dspring-boot.run.profiles=local
 
-build: ## Build Spring Boot JAR with tests
-	mvn clean package
+clean: ## mvn clean project
+	mvn clean
+
+build: clean ## Build Spring Boot JAR with tests
+	mvn package
 
 build-skip-tests: ## Build Spring Boot JAR without tests
 	mvn clean package -DskipTests

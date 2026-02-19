@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Overview of All Exciting Tours &mdash; MapStash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Mapbox CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { font-family:system-ui,sans-serif; background:#f5f6fa; margin:0; }
+        .container { max-width:1100px; margin:2em auto; padding:2em; background:#fff; border-radius:1em; box-shadow:0 4px 24px #0001; }
+        h1 { font-size:2.3em; margin-bottom:0.5em; }
+        .nav-link { display:inline-block; margin-bottom:1em; color:#667eea; text-decoration:none; }
+        #overview-map { width:100%; height:550px; border-radius:8px; margin-bottom:1.5em;}
+        .empty-state { color:#718096; text-align:center; margin:3em 0;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="/" class="nav-link">&#8592; Back to Home</a>
+    <h1>Overview: All Tour Start Points</h1>
+    <div id="overview-map"></div>
+    <div th:unless="${hasGeoFeatures}" class="empty-state">
+        No GPX tours with valid start points found.
+    </div>
+</div>
+
+<!-- Mapbox GL JS -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.js"></script>
+<script th:inline="javascript">
+/*<![CDATA[*/
+    const geoJsonData = [[${geoJson}]];
+    const geoJson = typeof geoJsonData === 'string' ? JSON.parse(geoJsonData) : geoJsonData;
+    const bounds = [0,0,0,0]; /*[[${bounds}]]*/
+    const mapboxToken = /*[[${mapboxToken}]]*/ '';
+
+    // Utility to get first coordinate for animation
+    function getFirstCoordinate(geoJson) {
+        if (!geoJson || !geoJson.features || geoJson.features.length === 0) return [0,0];
+        for (const feature of geoJson.features) {
+            if (!feature.geometry || !feature.geometry.coordinates) continue;
+            if (feature.geometry.type === 'Point') {
+                return feature.geometry.coordinates;
+            }
+            if (feature.geometry.type === 'LineString' && feature.geometry.coordinates.length > 0) {
+                return feature.geometry.coordinates[0];
+            }
+            if (feature.geometry.type === 'MultiLineString' && feature.geometry.coordinates.length > 0) {
+                return feature.geometry.coordinates[0][0];
+            }
+        }
+        return [0,0];
+    }
+
+    const firstCoord = getFirstCoordinate(geoJson);
+
+    if (geoJson.features && geoJson.features.length) {
+        mapboxgl.accessToken = mapboxToken;
+        // Start zoomed out/worldview, center at first point or [0,0]
+        const map = new mapboxgl.Map({
+            container: 'overview-map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: firstCoord,
+            zoom: 1
+        });
+
+        map.on('load', function() {
+            // After a brief delay, fly to first point at higher zoom
+            if (firstCoord && (firstCoord[0] !== 0 || firstCoord[1] !== 0)) {
+                setTimeout(() => {
+                    map.flyTo({
+                        center: firstCoord,
+                        zoom: 8,
+                        speed: 0.75,
+                        curve: 1.5,
+                        essential: true
+                    });
+                }, 1000);
+            }
+        });
+
+        // Add points as markers
+        geoJson.features.forEach(f => {
+            if (!f.geometry || !f.geometry.coordinates) return;
+
+            const [lon, lat] = f.geometry.coordinates;
+            const popupHtml =
+                '<strong>' + (f.properties.name || 'Tour') + '</strong>' +
+                (f.properties.description
+                    ? '<div style="font-size:.9em; margin:4px 0;">'+f.properties.description+'</div>' : '') +
+                '<a href="/map/' + f.properties.fileId + '" target="_blank" style="color:#667eea;text-decoration:underline;display:block;margin-top:4px;">View Details</a>';
+            new mapboxgl.Marker({color:'#667eea'})
+                .setLngLat([lon, lat])
+                .setPopup(new mapboxgl.Popup({offset:14}).setHTML(popupHtml))
+                .addTo(map);
+        });
+    }
+/*]]>*/
+</script>
+</body>
+</html>

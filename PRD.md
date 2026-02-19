@@ -16,6 +16,7 @@
 | REQ-010 | Add a mandatory name field to the database. it should be derived from the from the gpx metadata. if not present, use the file basename without extension. update existing records with the value of the original_filename column so we can make the field mandatory | ✅ Implemented                  |
 | REQ-011 | Add Native Image support                                                                                                                                                                                                                                            | ✅ Implemented                  |
 | REQ-012 | Add PostGIS support to DB, add POINT column to gpx table to represent the start point of the tour, POINT(0 0) is the default                                                                                                                                        | ✅ Implemented (commit: <hash>) |
+| REQ-013 | Provide an additional Overview map screen that shows the start_point of all stored tours in gpx_files                                                                                                                                                               | ❌ Not Implemented              |
 
 ---
 
