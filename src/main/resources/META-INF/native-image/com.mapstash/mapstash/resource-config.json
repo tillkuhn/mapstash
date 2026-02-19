@@ -6,7 +6,8 @@
       {"pattern": "\\Qstatic/**\\E"},
       {"pattern": "\\Qapplication.properties\\E"},
       {"pattern": "\\Qapplication-*.properties\\E"},
-      {"pattern": "\\Qorg/springframework/boot/logging/**\\E"}
+      {"pattern": "\\Qorg/springframework/boot/logging/**\\E"},
+      {"pattern": "spatial_ref_sys.txt"}
     ]
   },
   "bundles": []

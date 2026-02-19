@@ -297,13 +297,13 @@ Browser → GpxController → Services → Response
 
 ## API Endpoints
 
-| Method | Path | Purpose | Returns |
-|--------|------|---------|---------|
-| GET | `/` | Home page | Thymeleaf template |
-| POST | `/upload` | File upload | Redirect to map view |
-| GET | `/map/{fileId}` | Map visualization | Thymeleaf template |
-| POST | `/delete/{fileId}` | Delete file | Redirect to home |
-| GET | `/api/gpx/{fileId}` | Get GeoJSON | Raw JSON string |
+| Method | Path                | Purpose           | Returns              |
+|--------|---------------------|-------------------|----------------------|
+| GET    | `/`                 | Home page         | Thymeleaf template   |
+| POST   | `/upload`           | File upload       | Redirect to map view |
+| GET    | `/map/{fileId}`     | Map visualization | Thymeleaf template   |
+| POST   | `/delete/{fileId}`  | Delete file       | Redirect to home     |
+| GET    | `/api/gpx/{fileId}` | Get GeoJSON       | Raw JSON string      |
 
 ## Feature Development Workflow
 

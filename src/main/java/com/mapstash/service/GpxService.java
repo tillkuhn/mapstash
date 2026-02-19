@@ -215,13 +215,13 @@ public class GpxService {
         }
 
         // Try first track name
-        if (!gpx.getTracks().isEmpty() && gpx.getTracks().get(0).getName().isPresent()) {
-            return gpx.getTracks().get(0).getName().get();
+        if (!gpx.getTracks().isEmpty() && gpx.getTracks().getFirst().getName().isPresent()) {
+            return gpx.getTracks().getFirst().getName().get();
         }
 
         // Try first route name
-        if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().get(0).getName().isPresent()) {
-            return gpx.getRoutes().get(0).getName().get();
+        if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().getFirst().getName().isPresent()) {
+            return gpx.getRoutes().getFirst().getName().get();
         }
 
         return null;
