@@ -199,7 +199,7 @@
                                 <buildArg>--verbose</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                 <!-- Configure memory for native image build -->
-                                <buildArg>-J-Xmx16g</buildArg>
+                                <buildArg>-J-Xmx6g</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

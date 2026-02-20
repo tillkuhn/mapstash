@@ -45,3 +45,4 @@ data/
 /target/mapstash
 /target/mapstash.exe
 .DS_Store
+.env

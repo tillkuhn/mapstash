@@ -2,7 +2,8 @@
 # This Dockerfile builds a native image and creates a minimal container
 
 # Stage 1: Build the native image
-FROM ghcr.io/graalvm/native-image:25 AS builder
+# Check https://www.graalvm.org/latest/getting-started/container-images/ for tags
+FROM ghcr.io/graalvm/native-image-community:25 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -23,6 +24,9 @@ RUN ./mvnw -Pnative native:compile -DskipTests
 
 # Stage 2: Create minimal runtime image
 FROM debian:bookworm-slim
+# Check https://github.com/GoogleContainerTools/distroless for tags
+# latest, nonroot, debug, debug-nonroot
+#FROM gcr.io/distroless/base-debian13
 
 # Install runtime dependencies
 RUN apt-get update && \
