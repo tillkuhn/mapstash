@@ -125,6 +125,19 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Style selector specific styling */
+        #style-control {
+            position: absolute;
+            top: 80px;
+            right: 16px;
+            z-index: 2;
+            background: white;
+            padding: 6px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        #map-style-select { font-size: 14px; }
     </style>
 </head>
 <body>
@@ -143,6 +156,18 @@
 
 <div id='map'></div>
 
+<!-- Style selector: placed in body so it's visible before map load -->
+<div id="style-control">
+    <label for="map-style-select" style="font-size:14px;margin-right:6px">Map style</label>
+    <select id="map-style-select">
+        <option value="mapbox://styles/mapbox/outdoors-v12">Outdoors</option>
+        <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+        <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+        <option value="mapbox://styles/mapbox/light-v11">Light</option>
+        <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+    </select>
+</div>
+
 <script th:inline="javascript">
     /*<![CDATA[*/
 
@@ -158,16 +183,32 @@
     // Initialize Mapbox
     mapboxgl.accessToken = mapboxToken;
 
+    // Default style
+    const defaultStyle = document.getElementById('map-style-select').value || 'mapbox://styles/mapbox/outdoors-v12';
+
+    // Create map
     const map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        center: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
+        style: defaultStyle,
+        center: (bounds && bounds.length === 4) ? [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2] : [0, 0],
         zoom: 12
     });
 
-    map.on('load', function () {
-        // Hide loading indicator
-        document.getElementById('loading').classList.add('hidden');
+    // Helper to (re-)add GPX source and layers. Called on initial load and after style changes.
+    function addGpxSourceAndLayers() {
+        // Remove existing layers/sources if present (safe-guard for hot reloads)
+        try {
+            ['gpx-waypoint-labels','gpx-waypoints','gpx-lines-outline','gpx-lines'].forEach(id => {
+                if (map.getLayer(id)) map.removeLayer(id);
+            });
+        } catch (err) {
+            // ignore - layers may not exist
+        }
+        try {
+            if (map.getSource('gpx-data')) map.removeSource('gpx-data');
+        } catch (err) {
+            // ignore - source may not exist
+        }
 
         // Add GeoJSON source
         map.addSource('gpx-data', {
@@ -243,27 +284,7 @@
             }
         });
 
-        // Fit map to bounds
-        if (bounds && bounds.length === 4) {
-            map.fitBounds(
-                [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
-                {padding: 50, maxZoom: 15}
-            );
-        }
-
-        // Add navigation controls
-        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-
-        // Add scale control
-        map.addControl(new mapboxgl.ScaleControl({
-            maxWidth: 200,
-            unit: 'metric'
-        }), 'bottom-left');
-
-        // Add fullscreen control
-        map.addControl(new mapboxgl.FullscreenControl(), 'bottom-right');
-
-        // Add popup on waypoint click
+        // Attach interactions
         map.on('click', 'gpx-waypoints', function (e) {
             const coordinates = e.features[0].geometry.coordinates.slice();
             const properties = e.features[0].properties;
@@ -279,7 +300,6 @@
                 .addTo(map);
         });
 
-        // Change cursor on waypoint hover
         map.on('mouseenter', 'gpx-waypoints', function () {
             map.getCanvas().style.cursor = 'pointer';
         });
@@ -288,7 +308,6 @@
             map.getCanvas().style.cursor = '';
         });
 
-        // Add popup on line click with track name
         map.on('click', 'gpx-lines', function (e) {
             const properties = e.features[0].properties;
             if (properties.name) {
@@ -305,6 +324,46 @@
 
         map.on('mouseleave', 'gpx-lines', function () {
             map.getCanvas().style.cursor = '';
+        });
+
+        // Fit map to bounds if available
+        if (bounds && bounds.length === 4) {
+            map.fitBounds(
+                [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
+                {padding: 50, maxZoom: 15}
+            );
+        }
+    }
+
+    map.on('load', function () {
+        // Hide loading indicator
+        document.getElementById('loading').classList.add('hidden');
+
+        // Add GPX source & layers
+        addGpxSourceAndLayers();
+
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+        // Add scale control
+        map.addControl(new mapboxgl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }), 'bottom-left');
+
+        // Add fullscreen control
+        map.addControl(new mapboxgl.FullscreenControl(), 'bottom-right');
+    });
+
+    // Style selector change: replace style and re-add GPX layers after new style loads
+    const styleSelect = document.getElementById('map-style-select');
+    styleSelect.addEventListener('change', function (ev) {
+        const newStyle = ev.target.value;
+        // setStyle will remove sources and layers, so re-add them after style loads
+        map.setStyle(newStyle);
+        map.once('style.load', function () {
+            // re-add source and layers
+            addGpxSourceAndLayers();
         });
     });
 
