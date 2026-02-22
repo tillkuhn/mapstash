@@ -131,8 +131,36 @@ public class FileStorageService {
         // Save content in separate table
         GpxContent gpxContent = new GpxContent();
         gpxContent.setGpxFileId(gpxFile.getId());
-        gpxContent.setGpxContent(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
-        contentRepository.save(gpxContent);
+        String contentString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        // Log content size and preview for debugging persistent issues (trim preview to 200 chars)
+        int contentLen = contentString.length();
+        String preview = contentLen > 200 ? contentString.substring(0, 200) + "..." : contentString;
+        log.debug("Saving GPX content for fileId={} length={} preview={}", gpxFile.getId(), contentLen, preview.replaceAll("\n", "\\n"));
+
+        // Validate that the content looks like GPX/XML and not a numeric value (previous bug stored numeric values accidentally)
+        String trimmed = contentString.trim();
+        if (trimmed.matches("^\\d+$") || !trimmed.startsWith("<")) {
+            log.error("Refusing to persist invalid GPX content for fileId={} (length={}, preview={})", gpxFile.getId(), contentLen, preview.replaceAll("\n", "\\n"));
+            throw new IllegalStateException("Invalid GPX content detected; aborting save to avoid corrupting database");
+        }
+
+        gpxContent.setGpxContent(contentString);
+        // Use saveAndFlush to ensure content is written immediately to DB (helps with debugging and JDBC streaming)
+        contentRepository.saveAndFlush(gpxContent);
+
+        // Read back immediately and log what's actually persisted (post-save verification)
+        Optional<GpxContent> persisted = contentRepository.findByGpxFileId(gpxFile.getId());
+        if (persisted.isPresent()) {
+            String stored = persisted.get().getGpxContent();
+            int storedLen = (stored == null) ? 0 : stored.length();
+            String storedPreview = (stored == null) ? "" : (storedLen > 200 ? stored.substring(0, 200) + "..." : stored);
+            log.debug("Persisted GPX content for fileId={} storedLength={} preview={}", gpxFile.getId(), storedLen, storedPreview.replaceAll("\n", "\\n"));
+            if (storedLen != contentLen) {
+                log.warn("Mismatch between original content length={} and stored length={} for fileId={}", contentLen, storedLen, gpxFile.getId());
+            }
+        } else {
+            log.error("Failed to read back GPX content after save for fileId={}", gpxFile.getId());
+        }
 
         // No disk writes: store content only in DB and return metadata
         gpxFile.setPath(null);
