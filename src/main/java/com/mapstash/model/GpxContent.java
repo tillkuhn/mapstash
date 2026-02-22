@@ -25,7 +25,7 @@ public class GpxContent {
     @Column(name = "gpx_file_id", nullable = false, unique = true, length = 36)
     private String gpxFileId;
 
-    @Lob
+    //@Lob // https://stackoverflow.com/questions/53377735/postgresql-values-of-column-type-text-are-shown-as-numbers
     @Column(name = "gpx_content", columnDefinition = "text", nullable = false)
     private String gpxContent;
 
