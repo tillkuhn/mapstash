@@ -3,6 +3,8 @@ package com.mapstash.service;
 import com.mapstash.model.GpxFile;
 import org.locationtech.jts.geom.Point;
 import com.mapstash.repository.GpxFileRepository;
+import com.mapstash.repository.GpxContentRepository;
+import com.mapstash.model.GpxContent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -18,6 +20,8 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Coordinate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,14 +32,17 @@ public class FileStorageService {
 
     private final Path uploadDirectory;
     private final GpxFileRepository repository;
+    private final GpxContentRepository contentRepository;
     private final GpxService gpxService;
 
     public FileStorageService(
             @Value("${mapstash.upload.directory:uploads}") String uploadDir,
             GpxFileRepository repository,
+            GpxContentRepository contentRepository,
             GpxService gpxService) throws IOException {
         this.uploadDirectory = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.repository = repository;
+        this.contentRepository = contentRepository;
         this.gpxService = gpxService;
         Files.createDirectories(uploadDirectory);
         log.info("Upload directory initialized at: {}", uploadDirectory);
@@ -77,25 +84,34 @@ public class FileStorageService {
             return existing;
         }
 
-        // Store file to disk
+        // Persist to DB (metadata + content). We still keep the uploads dir for compatibility
         String fileId = UUID.randomUUID().toString();
         String storedFilename = fileId + ".gpx";
-        Path targetPath = uploadDirectory.resolve(storedFilename);
 
-        Files.copy(file.getInputStream(), targetPath);
-        log.info("Stored file {} as {}", originalFilename, storedFilename);
+        // Read bytes for content operations
+        byte[] bytes = file.getBytes();
 
-        // Extract name from GPX metadata or use filename without extension
-        String name;
-        try {
-            name = gpxService.extractName(targetPath);
-            if (name == null || name.trim().isEmpty()) {
-                // Fallback to filename without extension
-                name = originalFilename.replaceFirst("\\.gpx$", "");
-            }
+        // Extract name and start point using temporary InputStream
+        String name = null;
+        Point startPoint = null;
+        try (InputStream in = new java.io.ByteArrayInputStream(bytes)) {
+            name = gpxService.extractName(in);
         } catch (Exception e) {
-            log.warn("Failed to extract name from GPX metadata, using filename", e);
+            log.warn("Failed to extract name from GPX metadata via stream, will try fallback", e);
+        }
+
+        if (name == null || name.trim().isEmpty()) {
             name = originalFilename.replaceFirst("\\.gpx$", "");
+        }
+
+        try (InputStream in2 = new java.io.ByteArrayInputStream(bytes)) {
+            startPoint = gpxService.extractStartPoint(in2);
+        } catch (Exception e) {
+            log.warn("Failed to extract start point via stream, setting to POINT(0 0)", e);
+            GeometryFactory gf = new GeometryFactory();
+            Point pt = gf.createPoint(new Coordinate(0,0));
+            pt.setSRID(4326);
+            startPoint = pt;
         }
 
         // Save metadata to database
@@ -108,10 +124,20 @@ public class FileStorageService {
                 .fileSize(file.getSize())
                 .checksum(checksum)
                 .description(description)
-                .startPoint(gpxService.extractStartPoint(targetPath))
+                .startPoint(startPoint)
                 .build();
 
         gpxFile = repository.save(gpxFile);
+
+        // Save content in separate table
+        GpxContent gpxContent = new GpxContent();
+        gpxContent.setGpxFileId(gpxFile.getId());
+        gpxContent.setGpxContent(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+        contentRepository.save(gpxContent);
+
+        // For compatibility keep a copy on disk (optional) - allows older deployments to still read files
+        Path targetPath = uploadDirectory.resolve(storedFilename);
+        Files.write(targetPath, bytes);
         gpxFile.setPath(targetPath.toString());
 
         return gpxFile;
@@ -142,6 +168,28 @@ public class FileStorageService {
      */
     public Path getFilePath(String fileId) {
         return uploadDirectory.resolve(fileId + ".gpx");
+    }
+
+    /**
+     * Return GeoJSON for a file by reading GPX content from gpx_contents and converting it.
+     */
+    public String getGeoJsonForFile(String fileId) throws IOException {
+        GpxContent content = contentRepository.findByGpxFileId(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("GPX content not found for file: " + fileId));
+        try (InputStream in = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            return gpxService.convertToGeoJson(in);
+        }
+    }
+
+    /**
+     * Return bounding box for a file by reading GPX content and calculating bounds
+     */
+    public double[] getBoundsForFile(String fileId) throws IOException {
+        GpxContent content = contentRepository.findByGpxFileId(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("GPX content not found for file: " + fileId));
+        try (InputStream in = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            return gpxService.calculateBounds(in);
+        }
     }
 
     /**

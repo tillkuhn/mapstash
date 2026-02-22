@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
@@ -49,6 +50,29 @@ public class GpxService {
             });
     }
 
+    /**
+     * Same as extractStartPoint but reads from an InputStream (does not require a filesystem path)
+     */
+    public Point extractStartPoint(InputStream in) throws IOException {
+        GPX gpx = GPX.read(in);
+        return gpx.getTracks().stream()
+            .flatMap(track -> track.getSegments().stream())
+            .flatMap(segment -> segment.getPoints().stream())
+            .findFirst()
+            .map(point -> {
+                GeometryFactory gf = new GeometryFactory();
+                Point pt = gf.createPoint(new Coordinate(point.getLongitude().doubleValue(), point.getLatitude().doubleValue()));
+                pt.setSRID(4326);
+                return pt;
+            })
+            .orElseGet(() -> {
+                GeometryFactory gf = new GeometryFactory();
+                Point pt = gf.createPoint(new Coordinate(0, 0));
+                pt.setSRID(4326);
+                return pt;
+            });
+    }
+
 
     private final ObjectMapper objectMapper;
 
@@ -63,6 +87,72 @@ public class GpxService {
         log.info("Converting GPX file to GeoJSON: {}", gpxFilePath);
 
         GPX gpx = GPX.read(gpxFilePath);
+
+        ObjectNode featureCollection = objectMapper.createObjectNode();
+        featureCollection.put("type", "FeatureCollection");
+
+        ArrayNode features = featureCollection.putArray("features");
+
+        // Process tracks
+        gpx.getTracks().forEach(track -> {
+            ObjectNode feature = createLineStringFeature(track);
+            features.add(feature);
+        });
+
+        // Process routes
+        gpx.getRoutes().forEach(route -> {
+            ObjectNode feature = objectMapper.createObjectNode();
+            feature.put("type", "Feature");
+
+            ObjectNode geometry = feature.putObject("geometry");
+            geometry.put("type", "LineString");
+
+            ArrayNode coordinates = geometry.putArray("coordinates");
+            route.getPoints().forEach(point -> {
+                ArrayNode coord = coordinates.addArray();
+                coord.add(point.getLongitude().doubleValue());
+                coord.add(point.getLatitude().doubleValue());
+                point.getElevation().ifPresent(elevation -> coord.add(elevation.doubleValue()));
+            });
+
+            ObjectNode properties = feature.putObject("properties");
+            route.getName().ifPresent(name -> properties.put("name", name));
+            properties.put("type", "route");
+
+            features.add(feature);
+        });
+
+        // Process waypoints
+        gpx.getWayPoints().forEach(waypoint -> {
+            ObjectNode feature = objectMapper.createObjectNode();
+            feature.put("type", "Feature");
+
+            ObjectNode geometry = feature.putObject("geometry");
+            geometry.put("type", "Point");
+
+            ArrayNode coordinates = geometry.putArray("coordinates");
+            coordinates.add(waypoint.getLongitude().doubleValue());
+            coordinates.add(waypoint.getLatitude().doubleValue());
+            waypoint.getElevation().ifPresent(elevation -> coordinates.add(elevation.doubleValue()));
+
+            ObjectNode properties = feature.putObject("properties");
+            waypoint.getName().ifPresent(name -> properties.put("name", name));
+            waypoint.getDescription().ifPresent(desc -> properties.put("description", desc));
+            properties.put("type", "waypoint");
+
+            features.add(feature);
+        });
+
+        return objectMapper.writeValueAsString(featureCollection);
+    }
+
+    /**
+     * Same as convertToGeoJson but reads from InputStream
+     */
+    public String convertToGeoJson(InputStream in) throws IOException {
+        log.info("Converting GPX stream to GeoJSON");
+
+        GPX gpx = GPX.read(in);
 
         ObjectNode featureCollection = objectMapper.createObjectNode();
         featureCollection.put("type", "FeatureCollection");
@@ -158,6 +248,38 @@ public class GpxService {
         return bounds;
     }
 
+    /**
+     * Calculate bounds from InputStream
+     */
+    public double[] calculateBounds(InputStream in) throws IOException {
+        GPX gpx = GPX.read(in);
+
+        Stream<WayPoint> allPoints = Stream.concat(
+                Stream.concat(
+                        gpx.getTracks().stream()
+                                .flatMap(track -> track.getSegments().stream())
+                                .flatMap(segment -> segment.getPoints().stream()),
+                        gpx.getRoutes().stream()
+                                .flatMap(route -> route.getPoints().stream())
+                ),
+                gpx.getWayPoints().stream()
+        );
+
+        double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+
+        allPoints.forEach(point -> {
+            double lon = point.getLongitude().doubleValue();
+            double lat = point.getLatitude().doubleValue();
+
+            bounds[0] = Math.min(bounds[0], lon); // minLon
+            bounds[1] = Math.min(bounds[1], lat); // minLat
+            bounds[2] = Math.max(bounds[2], lon); // maxLon
+            bounds[3] = Math.max(bounds[3], lat); // maxLat
+        });
+
+        return bounds;
+    }
+
     private ObjectNode createLineStringFeature(Track track) {
         ObjectNode feature = objectMapper.createObjectNode();
         feature.put("type", "Feature");
@@ -220,6 +342,27 @@ public class GpxService {
         }
 
         // Try first route name
+        if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().getFirst().getName().isPresent()) {
+            return gpx.getRoutes().getFirst().getName().get();
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract name from InputStream
+     */
+    public String extractName(InputStream in) throws IOException {
+        GPX gpx = GPX.read(in);
+
+        if (gpx.getMetadata().isPresent() && gpx.getMetadata().get().getName().isPresent()) {
+            return gpx.getMetadata().get().getName().get();
+        }
+
+        if (!gpx.getTracks().isEmpty() && gpx.getTracks().getFirst().getName().isPresent()) {
+            return gpx.getTracks().getFirst().getName().get();
+        }
+
         if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().getFirst().getName().isPresent()) {
             return gpx.getRoutes().getFirst().getName().get();
         }

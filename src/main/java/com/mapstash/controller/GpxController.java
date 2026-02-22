@@ -78,15 +78,9 @@ public class GpxController {
             GpxFile gpxFile = gpxFileRepository.findById(fileId)
                     .orElseThrow(() -> new IllegalArgumentException("File not found: " + fileId));
 
-            Path gpxFilePath = fileStorageService.getFilePath(fileId);
-
-            if (!Files.exists(gpxFilePath)) {
-                model.addAttribute("error", "File not found: " + fileId);
-                return "error";
-            }
-
-            String geoJson = gpxService.convertToGeoJson(gpxFilePath);
-            double[] bounds = gpxService.calculateBounds(gpxFilePath);
+            // Read content from DB (gpx_contents) via FileStorageService
+            String geoJson = fileStorageService.getGeoJsonForFile(fileId);
+            double[] bounds = fileStorageService.getBoundsForFile(fileId);
 
             model.addAttribute("fileId", fileId);
             model.addAttribute("filename", gpxFile.getName()); // Use name instead of filename
@@ -125,13 +119,8 @@ public class GpxController {
     @GetMapping("/api/gpx/{fileId}")
     @ResponseBody
     public String getGeoJson(@PathVariable String fileId) throws IOException {
-        Path gpxFilePath = fileStorageService.getFilePath(fileId);
-
-        if (!Files.exists(gpxFilePath)) {
-            throw new IllegalArgumentException("File not found: " + fileId);
-        }
-
-        return gpxService.convertToGeoJson(gpxFilePath);
+        // Read content from DB via FileStorageService
+        return fileStorageService.getGeoJsonForFile(fileId);
     }
 
     // Overview map of all start points
