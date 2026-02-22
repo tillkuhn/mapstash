@@ -34,16 +34,22 @@ public class GpxContentMigrationRunner implements CommandLineRunner {
         log.info("Starting GPX content migration (profile=migration)");
 
         List<GpxFile> files = gpxFileRepository.findAll();
-        Path uploads = Paths.get("uploads").toAbsolutePath().normalize();
-
+        
         for (GpxFile file : files) {
             if (gpxContentRepository.findByGpxFileId(file.getId()).isPresent()) {
                 continue; // already migrated
             }
 
-            Path p = uploads.resolve(file.getFilename());
+            // Try to read existing path field if populated, otherwise skip
+            String path = file.getPath();
+            if (path == null || path.isEmpty()) {
+                log.warn("No filesystem path for {}, skipping migration. Set file.path or place file in uploads/ for migration.", file.getId());
+                continue;
+            }
+
+            Path p = Paths.get(path);
             if (!Files.exists(p)) {
-                log.warn("File {} not found in uploads directory, skipping", p);
+                log.warn("File {} not found at path {}, skipping", file.getId(), p);
                 continue;
             }
 

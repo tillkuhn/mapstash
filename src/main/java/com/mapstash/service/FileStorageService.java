@@ -30,22 +30,18 @@ import java.util.UUID;
 @Slf4j
 public class FileStorageService {
 
-    private final Path uploadDirectory;
     private final GpxFileRepository repository;
     private final GpxContentRepository contentRepository;
     private final GpxService gpxService;
 
     public FileStorageService(
-            @Value("${mapstash.upload.directory:uploads}") String uploadDir,
             GpxFileRepository repository,
             GpxContentRepository contentRepository,
-            GpxService gpxService) throws IOException {
-        this.uploadDirectory = Paths.get(uploadDir).toAbsolutePath().normalize();
+            GpxService gpxService) {
         this.repository = repository;
         this.contentRepository = contentRepository;
         this.gpxService = gpxService;
-        Files.createDirectories(uploadDirectory);
-        log.info("Upload directory initialized at: {}", uploadDirectory);
+        log.info("FileStorageService initialized (DB-backed content, no filesystem writes)");
     }
 
     /**
@@ -80,7 +76,7 @@ public class FileStorageService {
         if (existingFile.isPresent()) {
             log.info("File {} already exists with checksum {}", originalFilename, checksum);
             GpxFile existing = existingFile.get();
-            existing.setPath(uploadDirectory.resolve(existing.getFilename()).toString());
+            // No filesystem path - client should rely on DB-backed content
             return existing;
         }
 
@@ -135,10 +131,8 @@ public class FileStorageService {
         gpxContent.setGpxContent(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
         contentRepository.save(gpxContent);
 
-        // For compatibility keep a copy on disk (optional) - allows older deployments to still read files
-        Path targetPath = uploadDirectory.resolve(storedFilename);
-        Files.write(targetPath, bytes);
-        gpxFile.setPath(targetPath.toString());
+        // No disk writes: store content only in DB and return metadata
+        gpxFile.setPath(null);
 
         return gpxFile;
     }
