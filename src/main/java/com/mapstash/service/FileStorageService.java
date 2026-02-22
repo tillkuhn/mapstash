@@ -3,6 +3,8 @@ package com.mapstash.service;
 import com.mapstash.model.GpxFile;
 import org.locationtech.jts.geom.Point;
 import com.mapstash.repository.GpxFileRepository;
+import com.mapstash.repository.GpxContentRepository;
+import com.mapstash.model.GpxContent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -18,6 +20,8 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Coordinate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,19 +30,21 @@ import java.util.UUID;
 @Slf4j
 public class FileStorageService {
 
-    private final Path uploadDirectory;
     private final GpxFileRepository repository;
+    private final GpxContentRepository contentRepository;
     private final GpxService gpxService;
+    private final ReadGpxJdbcService readGpxJdbcService;
 
     public FileStorageService(
-            @Value("${mapstash.upload.directory:uploads}") String uploadDir,
             GpxFileRepository repository,
-            GpxService gpxService) throws IOException {
-        this.uploadDirectory = Paths.get(uploadDir).toAbsolutePath().normalize();
+            GpxContentRepository contentRepository,
+            GpxService gpxService,
+            ReadGpxJdbcService readGpxJdbcService) {
         this.repository = repository;
+        this.contentRepository = contentRepository;
         this.gpxService = gpxService;
-        Files.createDirectories(uploadDirectory);
-        log.info("Upload directory initialized at: {}", uploadDirectory);
+        this.readGpxJdbcService = readGpxJdbcService;
+        log.info("FileStorageService initialized (DB-backed content, no filesystem writes)");
     }
 
     /**
@@ -73,29 +79,38 @@ public class FileStorageService {
         if (existingFile.isPresent()) {
             log.info("File {} already exists with checksum {}", originalFilename, checksum);
             GpxFile existing = existingFile.get();
-            existing.setPath(uploadDirectory.resolve(existing.getFilename()).toString());
+            // No filesystem path - client should rely on DB-backed content
             return existing;
         }
 
-        // Store file to disk
+        // Persist to DB (metadata + content). We still keep the uploads dir for compatibility
         String fileId = UUID.randomUUID().toString();
         String storedFilename = fileId + ".gpx";
-        Path targetPath = uploadDirectory.resolve(storedFilename);
 
-        Files.copy(file.getInputStream(), targetPath);
-        log.info("Stored file {} as {}", originalFilename, storedFilename);
+        // Read bytes for content operations
+        byte[] bytes = file.getBytes();
 
-        // Extract name from GPX metadata or use filename without extension
-        String name;
-        try {
-            name = gpxService.extractName(targetPath);
-            if (name == null || name.trim().isEmpty()) {
-                // Fallback to filename without extension
-                name = originalFilename.replaceFirst("\\.gpx$", "");
-            }
+        // Extract name and start point using temporary InputStream
+        String name = null;
+        Point startPoint = null;
+        try (InputStream in = new java.io.ByteArrayInputStream(bytes)) {
+            name = gpxService.extractName(in);
         } catch (Exception e) {
-            log.warn("Failed to extract name from GPX metadata, using filename", e);
+            log.warn("Failed to extract name from GPX metadata via stream, will try fallback", e);
+        }
+
+        if (name == null || name.trim().isEmpty()) {
             name = originalFilename.replaceFirst("\\.gpx$", "");
+        }
+
+        try (InputStream in2 = new java.io.ByteArrayInputStream(bytes)) {
+            startPoint = gpxService.extractStartPoint(in2);
+        } catch (Exception e) {
+            log.warn("Failed to extract start point via stream, setting to POINT(0 0)", e);
+            GeometryFactory gf = new GeometryFactory();
+            Point pt = gf.createPoint(new Coordinate(0,0));
+            pt.setSRID(4326);
+            startPoint = pt;
         }
 
         // Save metadata to database
@@ -108,11 +123,47 @@ public class FileStorageService {
                 .fileSize(file.getSize())
                 .checksum(checksum)
                 .description(description)
-                .startPoint(gpxService.extractStartPoint(targetPath))
+                .startPoint(startPoint)
                 .build();
 
         gpxFile = repository.save(gpxFile);
-        gpxFile.setPath(targetPath.toString());
+
+        // Save content in separate table
+        GpxContent gpxContent = new GpxContent();
+        gpxContent.setGpxFileId(gpxFile.getId());
+        String contentString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        // Log content size and preview for debugging persistent issues (trim preview to 200 chars)
+        int contentLen = contentString.length();
+        String preview = contentLen > 200 ? contentString.substring(0, 200) + "..." : contentString;
+        log.debug("Saving GPX content for fileId={} length={} preview={}", gpxFile.getId(), contentLen, preview.replaceAll("\n", "\\n"));
+
+        // Validate that the content looks like GPX/XML and not a numeric value (previous bug stored numeric values accidentally)
+        String trimmed = contentString.trim();
+        if (trimmed.matches("^\\d+$") || !trimmed.startsWith("<")) {
+            log.error("Refusing to persist invalid GPX content for fileId={} (length={}, preview={})", gpxFile.getId(), contentLen, preview.replaceAll("\n", "\\n"));
+            throw new IllegalStateException("Invalid GPX content detected; aborting save to avoid corrupting database");
+        }
+
+        gpxContent.setGpxContent(contentString);
+        // Use saveAndFlush to ensure content is written immediately to DB (helps with debugging and JDBC streaming)
+        contentRepository.saveAndFlush(gpxContent);
+
+        // Read back immediately and log what's actually persisted (post-save verification)
+        Optional<GpxContent> persisted = contentRepository.findByGpxFileId(gpxFile.getId());
+        if (persisted.isPresent()) {
+            String stored = persisted.get().getGpxContent();
+            int storedLen = (stored == null) ? 0 : stored.length();
+            String storedPreview = (stored == null) ? "" : (storedLen > 200 ? stored.substring(0, 200) + "..." : stored);
+            log.debug("Persisted GPX content for fileId={} storedLength={} preview={}", gpxFile.getId(), storedLen, storedPreview.replaceAll("\n", "\\n"));
+            if (storedLen != contentLen) {
+                log.warn("Mismatch between original content length={} and stored length={} for fileId={}", contentLen, storedLen, gpxFile.getId());
+            }
+        } else {
+            log.error("Failed to read back GPX content after save for fileId={}", gpxFile.getId());
+        }
+
+        // No disk writes: store content only in DB and return metadata
+        gpxFile.setPath(null);
 
         return gpxFile;
     }
@@ -126,10 +177,12 @@ public class FileStorageService {
         List<GpxFile> files = repository.findAll(Sort.by(Sort.Direction.DESC, "uploadDate"));
 
         // Set transient path field for each file
+        /*
         files.forEach(file -> {
             Path filePath = uploadDirectory.resolve(file.getFilename());
             file.setPath(filePath.toString());
         });
+        */
 
         return files;
     }
@@ -140,8 +193,41 @@ public class FileStorageService {
      * @param fileId The file ID
      * @return Path to the file
      */
+    /*
     public Path getFilePath(String fileId) {
         return uploadDirectory.resolve(fileId + ".gpx");
+    }
+
+     */
+
+    /**
+     * Return GeoJSON for a file by reading GPX content from gpx_contents and converting it.
+     */
+    public String getGeoJsonForFile(String fileId) throws IOException {
+        // Prefer streaming the content via JDBC for large content. Fall back to repository-stored content string.
+        InputStream jdbcStream = readGpxJdbcService.streamGpxContent(fileId);
+        if (jdbcStream != null) {
+            try (InputStream in = jdbcStream) {
+                return gpxService.convertToGeoJson(in);
+            }
+        }
+
+        GpxContent content = contentRepository.findByGpxFileId(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("GPX content not found for file: " + fileId));
+        try (InputStream in2 = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            return gpxService.convertToGeoJson(in2);
+        }
+    }
+
+    /**
+     * Return bounding box for a file by reading GPX content and calculating bounds
+     */
+    public double[] getBoundsForFile(String fileId) throws IOException {
+        GpxContent content = contentRepository.findByGpxFileId(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("GPX content not found for file: " + fileId));
+        try (InputStream in = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            return gpxService.calculateBounds(in);
+        }
     }
 
     /**
@@ -156,9 +242,11 @@ public class FileStorageService {
         repository.deleteById(fileId);
 
         // Then delete from filesystem
+        /*
         Path filePath = getFilePath(fileId);
         Files.deleteIfExists(filePath);
-        log.info("Deleted file: {}", filePath);
+         */
+        log.info("Deleted file: {}", fileId);
     }
 
     /**
