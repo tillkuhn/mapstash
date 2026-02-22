@@ -17,6 +17,7 @@
 | REQ-011 | Add Native Image support                                                                                                                                                                                                                                            | ✅ Implemented                  |
 | REQ-012 | Add PostGIS support to DB, add POINT column to gpx table to represent the start point of the tour, POINT(0 0) is the default                                                                                                                                        | ✅ Implemented (commit: <hash>) |
 | REQ-013 | Provide an additional Overview map screen that shows the start_point of all stored tours in gpx_files                                                                                                                                                               | ❌ Not Implemented              |
+| REQ-014 | Store GPX XML content in a separate gpx_contents table (TEXT LOB), keep metadata in gpx_files and read LOBs only when required. Add migration runner and DB-backed read helpers.                                                                                  | ✅ Implemented                  |
 
 ---
 
