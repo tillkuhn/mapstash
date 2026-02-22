@@ -33,14 +33,17 @@ public class FileStorageService {
     private final GpxFileRepository repository;
     private final GpxContentRepository contentRepository;
     private final GpxService gpxService;
+    private final ReadGpxJdbcService readGpxJdbcService;
 
     public FileStorageService(
             GpxFileRepository repository,
             GpxContentRepository contentRepository,
-            GpxService gpxService) {
+            GpxService gpxService,
+            ReadGpxJdbcService readGpxJdbcService) {
         this.repository = repository;
         this.contentRepository = contentRepository;
         this.gpxService = gpxService;
+        this.readGpxJdbcService = readGpxJdbcService;
         log.info("FileStorageService initialized (DB-backed content, no filesystem writes)");
     }
 
@@ -146,10 +149,12 @@ public class FileStorageService {
         List<GpxFile> files = repository.findAll(Sort.by(Sort.Direction.DESC, "uploadDate"));
 
         // Set transient path field for each file
+        /*
         files.forEach(file -> {
             Path filePath = uploadDirectory.resolve(file.getFilename());
             file.setPath(filePath.toString());
         });
+        */
 
         return files;
     }
@@ -160,18 +165,29 @@ public class FileStorageService {
      * @param fileId The file ID
      * @return Path to the file
      */
+    /*
     public Path getFilePath(String fileId) {
         return uploadDirectory.resolve(fileId + ".gpx");
     }
+
+     */
 
     /**
      * Return GeoJSON for a file by reading GPX content from gpx_contents and converting it.
      */
     public String getGeoJsonForFile(String fileId) throws IOException {
+        // Prefer streaming the content via JDBC for large content. Fall back to repository-stored content string.
+        InputStream jdbcStream = readGpxJdbcService.streamGpxContent(fileId);
+        if (jdbcStream != null) {
+            try (InputStream in = jdbcStream) {
+                return gpxService.convertToGeoJson(in);
+            }
+        }
+
         GpxContent content = contentRepository.findByGpxFileId(fileId)
                 .orElseThrow(() -> new IllegalArgumentException("GPX content not found for file: " + fileId));
-        try (InputStream in = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
-            return gpxService.convertToGeoJson(in);
+        try (InputStream in2 = new java.io.ByteArrayInputStream(content.getGpxContent().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            return gpxService.convertToGeoJson(in2);
         }
     }
 
@@ -198,9 +214,11 @@ public class FileStorageService {
         repository.deleteById(fileId);
 
         // Then delete from filesystem
+        /*
         Path filePath = getFilePath(fileId);
         Files.deleteIfExists(filePath);
-        log.info("Deleted file: {}", filePath);
+         */
+        log.info("Deleted file: {}", fileId);
     }
 
     /**

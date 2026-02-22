@@ -1,13 +1,13 @@
 package com.mapstash.service;
 
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
 
-@Service
+@Component
 public class ReadGpxJdbcService {
     private final JdbcTemplate jdbcTemplate;
 
@@ -17,14 +17,17 @@ public class ReadGpxJdbcService {
 
     /**
      * Stream GPX content as InputStream for large objects (TEXT).
-     * Note: This uses ResultSet.getCharacterStream internally and wraps into InputStream.
+     * Uses queryForObject to fetch the text and returns a ByteArrayInputStream.
      */
     public InputStream streamGpxContent(String gpxFileId) {
-        return jdbcTemplate.query("SELECT gpx_content FROM gpx_contents WHERE gpx_file_id = ?",
-                new Object[]{gpxFileId}, rs -> {
-                    if (!rs.next()) return null;
-                    java.io.Reader r = rs.getCharacterStream(1);
-                    return new java.io.ReaderInputStream(r, java.nio.charset.StandardCharsets.UTF_8);
-                });
+        try {
+            String content = jdbcTemplate.queryForObject(
+                    "SELECT gpx_content FROM gpx_contents WHERE gpx_file_id = ?",
+                    new Object[]{gpxFileId}, String.class);
+            if (content == null) return null;
+            return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            return null;
+        }
     }
 }

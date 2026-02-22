@@ -35,6 +35,7 @@ build/
 ### Application Specific ###
 /uploads/
 application-local.properties
+application-dev.properties
 data/
 .claude/
 

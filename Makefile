@@ -4,16 +4,16 @@ help: ## Display this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 run: ## mvn spring-boot:run with local profile
-	mvn spring-boot:run -Dspring-boot.run.profiles=local
+	LANG=en mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 clean: ## mvn clean project
 	mvn clean
 
 build: clean ## Build Spring Boot JAR with tests
-	mvn package
+	LANG=en mvn package
 
 build-skip-tests: ## Build Spring Boot JAR without tests
-	mvn clean package -DskipTests
+	LANG=en mvn clean package -DskipTests
 
 jar: build ## Alias for build target
 

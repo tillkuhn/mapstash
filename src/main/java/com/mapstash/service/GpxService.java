@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
@@ -31,6 +32,7 @@ public class GpxService {
      * Defaults to POINT(0 0) if track/segment/point not found.
      */
     public Point extractStartPoint(Path gpxFilePath) throws IOException {
+        // Use JPX Path reader directly (available in the library)
         GPX gpx = GPX.read(gpxFilePath);
         return gpx.getTracks().stream()
             .flatMap(track -> track.getSegments().stream())
@@ -54,7 +56,7 @@ public class GpxService {
      * Same as extractStartPoint but reads from an InputStream (does not require a filesystem path)
      */
     public Point extractStartPoint(InputStream in) throws IOException {
-        GPX gpx = GPX.read(in);
+        GPX gpx = readGpxFromStream(in);
         return gpx.getTracks().stream()
             .flatMap(track -> track.getSegments().stream())
             .flatMap(segment -> segment.getPoints().stream())
@@ -85,7 +87,6 @@ public class GpxService {
      */
     public String convertToGeoJson(Path gpxFilePath) throws IOException {
         log.info("Converting GPX file to GeoJSON: {}", gpxFilePath);
-
         GPX gpx = GPX.read(gpxFilePath);
 
         ObjectNode featureCollection = objectMapper.createObjectNode();
@@ -152,7 +153,7 @@ public class GpxService {
     public String convertToGeoJson(InputStream in) throws IOException {
         log.info("Converting GPX stream to GeoJSON");
 
-        GPX gpx = GPX.read(in);
+        GPX gpx = readGpxFromStream(in);
 
         ObjectNode featureCollection = objectMapper.createObjectNode();
         featureCollection.put("type", "FeatureCollection");
@@ -252,7 +253,7 @@ public class GpxService {
      * Calculate bounds from InputStream
      */
     public double[] calculateBounds(InputStream in) throws IOException {
-        GPX gpx = GPX.read(in);
+        GPX gpx = readGpxFromStream(in);
 
         Stream<WayPoint> allPoints = Stream.concat(
                 Stream.concat(
@@ -329,19 +330,25 @@ public class GpxService {
      * @throws IOException if file cannot be read or parsed
      */
     public String extractName(Path gpxFilePath) throws IOException {
-        GPX gpx = GPX.read(gpxFilePath);
+        try (InputStream in = Files.newInputStream(gpxFilePath)) {
+            return extractName(in);
+        }
+    }
 
-        // Try metadata name first
+    /**
+     * Extract name from InputStream
+     */
+    public String extractName(InputStream in) throws IOException {
+        GPX gpx = readGpxFromStream(in);
+
         if (gpx.getMetadata().isPresent() && gpx.getMetadata().get().getName().isPresent()) {
             return gpx.getMetadata().get().getName().get();
         }
 
-        // Try first track name
         if (!gpx.getTracks().isEmpty() && gpx.getTracks().getFirst().getName().isPresent()) {
             return gpx.getTracks().getFirst().getName().get();
         }
 
-        // Try first route name
         if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().getFirst().getName().isPresent()) {
             return gpx.getRoutes().getFirst().getName().get();
         }
@@ -350,23 +357,17 @@ public class GpxService {
     }
 
     /**
-     * Extract name from InputStream
+     * Helper: read GPX from an InputStream by writing to a temp file and using GPX.read(Path).
      */
-    public String extractName(InputStream in) throws IOException {
-        GPX gpx = GPX.read(in);
-
-        if (gpx.getMetadata().isPresent() && gpx.getMetadata().get().getName().isPresent()) {
-            return gpx.getMetadata().get().getName().get();
+    private GPX readGpxFromStream(InputStream in) throws IOException {
+        Path tmp = Files.createTempFile("mapstash-gpx-", ".gpx");
+        try (java.io.OutputStream out = Files.newOutputStream(tmp)) {
+            in.transferTo(out);
         }
-
-        if (!gpx.getTracks().isEmpty() && gpx.getTracks().getFirst().getName().isPresent()) {
-            return gpx.getTracks().getFirst().getName().get();
+        try {
+            return GPX.read(tmp);
+        } finally {
+            Files.deleteIfExists(tmp);
         }
-
-        if (!gpx.getRoutes().isEmpty() && gpx.getRoutes().getFirst().getName().isPresent()) {
-            return gpx.getRoutes().getFirst().getName().get();
-        }
-
-        return null;
     }
 }
