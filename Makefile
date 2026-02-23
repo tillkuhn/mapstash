@@ -1,10 +1,8 @@
 APPNAME ?= mapstash
+PROFILE ?= local
 
 help: ## Display this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-run: ## mvn spring-boot:run with local profile
-	LANG=en mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 clean: ## mvn clean project
 	mvn clean
@@ -16,6 +14,9 @@ build-skip-tests: ## Build Spring Boot JAR without tests
 	LANG=en mvn clean package -DskipTests
 
 jar: build ## Alias for build target
+
+run: ## mvn spring-boot:run with local profile
+	LANG=en mvn spring-boot:run -Dspring-boot.run.profiles=$(PROFILE)
 
 test: ## Run unit tests
 	mvn test
