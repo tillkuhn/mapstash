@@ -3,6 +3,8 @@ package com.mapstash.config;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlNoIntegratedAuthException;
 import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlServerUntrustedCertificateSqlException;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
 import org.geolatte.geom.codec.PostgisWkbV2Encoder;
@@ -68,6 +70,8 @@ public class NativeRuntimeHints {
       // Similar Error https://github.com/quarkusio/quarkus/issues/50106
       reflection.registerType(
           FlywaySqlServerUntrustedCertificateSqlException.class, CONSTRUCTORS_AND_METHODS);
+      reflection.registerType(
+              FlywaySqlNoIntegratedAuthException.class, CONSTRUCTORS_AND_METHODS);
       reflection.registerType(
           TypeReference.of("org.hibernate.spatial.HSMessageLogger_$logger"),
           typeHint ->
