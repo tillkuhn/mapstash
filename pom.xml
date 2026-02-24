@@ -191,6 +191,15 @@
                             <imageName>mapstash</imageName>
                             <mainClass>com.mapstash.MapStashApplication</mainClass>
                             <buildArgs>
+                                <!-- https://developers.redhat.com/articles/2024/05/21/native-memory-tracking-graalvm-native-image# -->
+                                <!-- https://github.com/cnico/native-image-maven-demo/blob/main/pom.xml#L82 -->
+                                <!-- NMT = Native Memory Tracking. Launch app with
+                                    "$ ./myapp -XX:+PrintNMTStatistics -XX:StartFlightRecording=filename=target/recording.jfr"
+                                  -->
+                                <buildArg>--enable-monitoring=nmt,jfr</buildArg>
+                                <!-- To check the building environment, native-toolchain information, and settings applied while building an image,  -->
+                                <buildArg>--native-image-info</buildArg>
+
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>--verbose</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>

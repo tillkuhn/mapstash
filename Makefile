@@ -43,15 +43,13 @@ install-postgis: check-db ## Install PostGIS extension in the database (macOS on
 
 # read https://stevenpg.com/posts/graalvm-reflect-config-demystified/
 # https://github.com/spring-projects/spring-boot/issues/42515 Document how and where to add custom GraalVM configuration file (Overwrite problem)
-# java -agentlib:native-image-agent=config-merge-dir=./config -jar target/mapstash/0.0.1-SNAPSHOT.jar
 # mvn -Pnative spring-boot:build-image
-#mvn -Pnative spring-boot:build-image
-#The issue was that having both configuration files could cause GraalVM to ignore one of them or merge them incorrectly. The unified reachability-metadata.json
-#format is the correct approach for GraalVM 25.
-#After rebuilding, test the native image again. If you still encounter issues with other methods, you can run the native image with the tracing agent to
-#capture all reflection usage:
-#java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image/com.mapstash/mapstash -jar target/mapstash-0.1.0-SNAPSHOT.jar
-#This would generate comprehensive configuration files based on actual runtime usage
+# The issue was that having both configuration files could cause GraalVM to ignore one of them or merge them incorrectly. The unified reachability-metadata.json
+# format is the correct approach for GraalVM 25.
+# After rebuilding, test the native image again. If you still encounter issues with other methods, you can run the native image with the tracing agent to
+# capture all reflection usage:
+# java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image/com.mapstash/mapstash -jar target/mapstash-0.1.0-SNAPSHOT.jar
+# This would generate comprehensive configuration files based on actual runtime usage
 native: ## Build GraalVM native image (requires GraalVM)
 	@echo "Building native image with GraalVM..."
 	@echo "Note: This requires GraalVM 25 to be installed (use: sdk install java 25.0.2-graalce)"
@@ -62,6 +60,9 @@ native: ## Build GraalVM native image (requires GraalVM)
 native-test: ## Run tests with native image
 	mvn -PnativeTest test
 
+# https://developers.redhat.com/articles/2024/05/21/native-memory-tracking-graalvm-native-image#getting_started_with_nmt_in_native_image
+native-run: ## Run native image
+	./target/mapstash -XX:+PrintNMTStatistics
 
 outdated: ## display dependency updates
 	mvn versions:display-dependency-updates

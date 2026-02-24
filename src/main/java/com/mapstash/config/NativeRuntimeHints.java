@@ -1,5 +1,6 @@
 package com.mapstash.config;
 
+import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlServerUntrustedCertificateSqlException;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
 import org.geolatte.geom.crs.CrsRegistry;
 import org.springframework.aot.hint.*;
@@ -41,28 +42,34 @@ public class NativeRuntimeHints {
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
                     // MemberCategory.DECLARED_FIELDS)
+
                     .registerType(List.class,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
                     .registerType(Collection.class,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
+
                     .registerType(Iterable.class,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
+
                     .registerType(String.class,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
+
                     .registerType(CharSequence.class,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
-                    // OOps https://github.com/oracle/graalvm-reachability-metadata/issues/505
+                    // Oops https://github.com/oracle/graalvm-reachability-metadata/issues/505
                     // Caused by: java.lang.NoSuchMethodException: org.geolatte.geom.codec.PostgisWkbDecoder.<init>()
+
                     .registerType(PostgisWkbDecoder.class,
                             MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
                             MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
                             MemberCategory.INVOKE_DECLARED_METHODS,
                             MemberCategory.INVOKE_PUBLIC_METHODS)
+
                     .registerType(CrsRegistry.class,
                             MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
                             MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
@@ -73,6 +80,13 @@ public class NativeRuntimeHints {
                     .registerType(HSMessageLogger.class,
                             MemberCategory.INVOKE_PUBLIC_METHODS
                     )
+                    // Similar Error https://github.com/quarkusio/quarkus/issues/50106
+                    .registerType(FlywaySqlServerUntrustedCertificateSqlException.class,
+                            MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+                            MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
+                            MemberCategory.INVOKE_DECLARED_METHODS,
+                            MemberCategory.INVOKE_PUBLIC_METHODS)
+
                     .registerType(TypeReference.of("org.hibernate.spatial.HSMessageLogger_$logger"),
                             typeHint -> typeHint.withConstructor(List.of(TypeReference.of("org.jboss.logging.Logger")), ExecutableMode.INVOKE));
         }
