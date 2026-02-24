@@ -1,5 +1,6 @@
 APPNAME ?= mapstash
 PROFILE ?= local
+GRAALVM_HOME ?= $(HOME)/.sdkman/candidates/java/25.0.2-graalce
 
 help: ## Display this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -54,15 +55,19 @@ native: ## Build GraalVM native image (requires GraalVM)
 	@echo "Building native image with GraalVM..."
 	@echo "Note: This requires GraalVM 25 to be installed (use: sdk install java 25.0.2-graalce)"
 	@echo "sdk use java 25.0.2-graalce"
-	$(HOME)/.sdkman/candidates/java/25.0.2-graalce/bin/java --version
-	JAVA_HOME=$(HOME)/.sdkman/candidates/java/25.0.2-graalce mvn -Pnative native:compile
+	$(GRAALVM_HOME)/bin/java --version
+	JAVA_HOME=$(GRAALVM_HOME) mvn -Pnative native:compile
 
 native-test: ## Run tests with native image
-	mvn -PnativeTest test
+	JAVA_HOME=$(GRAALVM_HOME) mvn -PnativeTest test
 
 # https://developers.redhat.com/articles/2024/05/21/native-memory-tracking-graalvm-native-image#getting_started_with_nmt_in_native_image
 native-run: ## Run native image
-	./target/mapstash -XX:+PrintNMTStatistics
+	MAPBOX_TOKEN=$(shell grep mapstash.mapbox.token src/main/resources/application-local.properties|cut -d= -f2|xargs) ./target/mapstash -XX:+PrintNMTStatistics # -XX:StartFlightRecording=filename=target/recording.jfr
+
+# https://www.graalvm.org/jdk25/reference-manual/native-image/debugging-and-diagnostics/JFR/
+native-jfr: ## Show native NativeMemoryUsage target/recording.jfr
+	 jfr print --events jdk.NativeMemoryUsage target/recording.jfr
 
 outdated: ## display dependency updates
 	mvn versions:display-dependency-updates

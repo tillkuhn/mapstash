@@ -24,6 +24,8 @@ import tools.jackson.databind.node.ObjectNode;
 @Slf4j
 public class GpxService {
 
+    private final ObjectMapper objectMapper;
+
     /**
      * Extract start point (first track coordinate) as a JTS Point (SRID 4326)
      * Defaults to POINT(0 0) if track/segment/point not found.
@@ -71,9 +73,6 @@ public class GpxService {
                 return pt;
             });
     }
-
-
-    private final ObjectMapper objectMapper;
 
     /**
      * Parse a GPX file and convert it to GeoJSON format for Mapbox GL JS

@@ -15,9 +15,8 @@ import tools.jackson.databind.ObjectMapper;
 
 class GpxServiceTest {
 
-  private GpxService gpxService;
-
   @TempDir Path tempDir;
+  private GpxService gpxService;
 
   @BeforeEach
   void setUp() {
