@@ -1,4 +1,13 @@
 # THANK YOU: https://clews.id.au/posts/setting-up-postgresql-16-and-postgis-on-macos-with-homebrew/
+# Remove existing PostGIS and PostgreSQL@14 to avoid conflicts
+brew remove postgis
+brew remove postgresql@14
+
+# Reinstall json-c (must be done after removing old postgis)
+brew uninstall json-c
+brew install json-c
+brew link json-c
+
 # Fix issues with missing gettext headers
 brew reinstall gettext
 brew unlink gettext && brew link gettext --force
