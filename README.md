@@ -112,6 +112,7 @@ A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) 
 
 ## Project structure (high-level)
 
+```text
 mapstash/
 ├── .github/workflows/ci.yml
 ├── src/
@@ -132,6 +133,7 @@ mapstash/
 ├── Makefile
 ├── pom.xml
 └── README.md
+```
 
 ## Important files to read first (for contributors)
 
