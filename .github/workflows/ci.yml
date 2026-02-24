@@ -8,7 +8,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/
+    runs-on: ubuntu-24.04-arm #ubuntu-latest
 
     services:
       postgres:
@@ -37,7 +38,9 @@ jobs:
         cache: maven
 
     - name: Build with Maven
-      run: mvn -B clean package --file pom.xml
+      run: |
+        uname -a
+        mvn -B clean package --file pom.xml
       env:
         DATABASE_URL: jdbc:postgresql://localhost:5432/mapstash_test
         DATABASE_USER: mapstash
