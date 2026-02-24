@@ -12,14 +12,15 @@ permissions:
 jobs:
   build-and-push:
     name: Build and push native image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm #ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU (for multi-arch build)
-        uses: docker/setup-qemu-action@v2
+      # native-image build + QEMU = years ... so we skip QEMU setup and just build on an ARM runner,
+      #- name: Set up QEMU (for multi-arch build)
+      #  uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,7 +37,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.native
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64 # linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/mapstash:${{ github.ref_name }}

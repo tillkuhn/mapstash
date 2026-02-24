@@ -35,6 +35,7 @@ create-db: check-db ## Create database and user for local development
 	@psql -U $(LOGNAME) -e -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE $(APPNAME)_db TO $(APPNAME);"
 	@psql -U $(LOGNAME) -e -d $(APPNAME)_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 	@echo "Database $(APPNAME)_db and user $(APPNAME) created"
+	pg_isready -d $(APPNAME)_db
 
 # THANK YOU: https://clews.id.au/posts/setting-up-postgresql-16-and-postgis-on-macos-with-homebrew/
 install-postgis: check-db ## Install PostGIS extension in the database (macOS only)
