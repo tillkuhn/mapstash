@@ -2,6 +2,8 @@
 
 A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) files on interactive maps using Mapbox GL JS.
 
+![](./preview.png)
+
 Quick cheat sheet (most-used commands)
 
 - Development (hot reload, local profile):
@@ -164,7 +166,11 @@ Testing
 Native image (GraalVM) notes
 
 - Use SDKMAN to install/use GraalVM JDK 25+ for native builds
-- Native image requires reflection/runtime hints — this project registers hints in NativeRuntimeHints.java. If you hit MissingReflectionRegistrationError, add the missing class to NativeRuntimeHints and rebuild.
+- Native image requires reflection/runtime hints — this project registers hints in NativeRuntimeHints.java. Do NOT add static native-image JSON files (for example reflect-config.json or reachability-metadata.json) to the repository — the AOT/native-image process used here uses the RuntimeHints approach and static JSON files will be overwritten or ignored.
+- If you see a MissingReflectionRegistrationError at runtime:
+  1. Build a native image with a GraalVM JDK: export JAVA_HOME=/path/to/graalvm && mvn clean package -Pnative -DskipTests
+  2. Run the produced native binary: ./target/mapstash
+  3. The stack trace will show the missing type or member. Add that class/members to NativeRuntimeHints.java (using appropriate MemberCategory flags), rebuild, and retry.
 - Build example:
 
   sdk use java 25.x-graal
