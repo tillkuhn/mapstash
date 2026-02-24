@@ -1,26 +1,23 @@
 package com.mapstash.service;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ArrayNode;
-import tools.jackson.databind.node.ObjectNode;
 import io.jenetics.jpx.GPX;
 import io.jenetics.jpx.Track;
 import io.jenetics.jpx.TrackSegment;
 import io.jenetics.jpx.WayPoint;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
+import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 @Service
 @RequiredArgsConstructor

@@ -1,30 +1,25 @@
 package com.mapstash.service;
 
-import com.mapstash.model.GpxFile;
-import org.locationtech.jts.geom.Point;
-import com.mapstash.repository.GpxFileRepository;
-import com.mapstash.repository.GpxContentRepository;
 import com.mapstash.model.GpxContent;
+import com.mapstash.model.GpxFile;
+import com.mapstash.repository.GpxContentRepository;
+import com.mapstash.repository.GpxFileRepository;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Coordinate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @Slf4j

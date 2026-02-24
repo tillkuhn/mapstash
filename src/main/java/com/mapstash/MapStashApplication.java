@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @EnableJpaAuditing
 public class MapStashApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(MapStashApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(MapStashApplication.class, args);
+  }
 }

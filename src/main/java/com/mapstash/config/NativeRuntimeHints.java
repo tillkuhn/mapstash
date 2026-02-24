@@ -1,17 +1,15 @@
 package com.mapstash.config;
 
-import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlServerUntrustedCertificateSqlException;
-import org.geolatte.geom.codec.PostgisWkbDecoder;
-import org.geolatte.geom.crs.CrsRegistry;
-import org.springframework.aot.hint.*;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.ImportRuntimeHints;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
+import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlServerUntrustedCertificateSqlException;
+import org.geolatte.geom.codec.PostgisWkbDecoder;
+import org.geolatte.geom.crs.CrsRegistry;
 import org.hibernate.spatial.HSMessageLogger;
+import org.springframework.aot.hint.*;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 
 /**
  * Registers runtime hints for GraalVM Native Image compilation.
