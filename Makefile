@@ -60,3 +60,7 @@ native: ## Build GraalVM native image (requires GraalVM)
 
 native-test: ## Run tests with native image
 	mvn -PnativeTest test
+
+
+outdated: ## display dependency updates
+	mvn versions:display-dependency-updates
