@@ -1,442 +1,206 @@
-# MapStash 🗺️
+# MapStash
 
 A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) files on interactive maps using Mapbox GL JS.
 
-## Features
+Quick cheat sheet (most-used commands)
 
-- 📤 **Upload GPX Files** - Easy drag-and-drop file upload interface
-- 🗺️ **Interactive Maps** - Beautiful map visualization powered by Mapbox GL JS
-- 📊 **Track Display** - View your GPS tracks, routes, and waypoints
-- 💾 **File Management** - Store and manage multiple GPX files
-- 🎨 **Modern UI** - Clean, responsive interface with gradient design
-- ⚡ **Server-Side Rendering** - Fast page loads with Thymeleaf templates
+- Development (hot reload, local profile):
+  - make run
+  - mvn spring-boot:run -Dspring-boot.run.profiles=local
+- Build:
+  - make build              # full build with tests
+  - make build-skip-tests   # build without tests
+  - make jar                # alias for build
+- Run artifact:
+  - java -jar target/mapstash-0.1.0-SNAPSHOT.jar
+- GraalVM native build (short):
+  - export JAVA_HOME=/path/to/graalvm
+  - mvn clean package -Pnative -DskipTests
+  - ./target/mapstash
+- Tests:
+  - mvn test
+  - mvn test -Dtest=GpxServiceTest
+  - mvn test -Dtest=GpxServiceTest#testConvertToGeoJson
+- Quick debug:
+  - pg_isready
+  - echo $MAPBOX_TOKEN
+  - curl -s http://localhost:4200/api/gpx/{fileId}
 
-## Technology Stack
+Features
 
-- **Backend**: Spring Boot 4.0.0 (Java 25)
-- **Database**: PostgreSQL with Spring Data JPA
-- **Build Tool**: Maven (via SDKMAN, no wrapper)
-- **Template Engine**: Thymeleaf
-- **Map Rendering**: Mapbox GL JS v3.1.0
-- **GPX Parsing**: io.jenetics:jpx library
-- **Data Format**: GeoJSON
-- **CI/CD**: GitHub Actions
+- Upload GPX files (drag-and-drop)
+- Interactive maps (Mapbox GL JS)
+- Track, route and waypoint display
+- File metadata persisted in PostgreSQL (with PostGIS)
+- Server-side rendering with Thymeleaf for fast page loads
 
-## Prerequisites
+Technology stack (guidance)
 
-- Java 25 or higher
-- Maven 3.6+ (installed via SDKMAN)
-- PostgreSQL 12+ (for database storage)
-- A Mapbox account and API token (free tier available)
+- Backend: Spring Boot (4.x compatible; Java 25 recommended for modern builds)
+- Database: PostgreSQL + PostGIS
+- Build: Maven (use system mvn; SDKMAN recommended for GraalVM JDKs)
+- Templates: Thymeleaf (server-side)
+- Map rendering: Mapbox GL JS (loaded from CDN in templates)
+- GPX parsing: io.jenetics:jpx
+- Data format: GeoJSON
+- CI: GitHub Actions
 
-## Getting Started
+Prerequisites
 
-### 1. Clone the Repository
+- Java 25+ (recommended) — SDKMAN is recommended for managing GraalVM JDKs
+- Maven 3.6+
+- PostgreSQL 12+ (with PostGIS)
+- Mapbox access token (create a free token at https://account.mapbox.com/access-tokens/)
+- For native builds: GraalVM (see Native image notes)
 
-```bash
-git clone <repository-url>
-cd mapstash
-```
+Getting started (local dev)
 
-### 2. Set Up PostgreSQL Database
+1) Clone
 
-**Create Database and User:**
-```bash
-# Using Makefile (if PGDATA is set)
-make create-db
+  git clone <repository-url>
+  cd mapstash
 
-# Or manually with psql
-createdb mapstash_db
-createuser mapstash
-psql -c "ALTER USER mapstash WITH PASSWORD 'mapstash';"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mapstash_db TO mapstash;"
-```
+2) Database
 
-**Configure Database Connection:**
+- Create database and user (example):
 
-The application uses these environment variables (with defaults):
-- `DATABASE_URL` (default: `jdbc:postgresql://localhost:5432/mapstash_db`)
-- `DATABASE_USER` (default: `mapstash`)
-- `DATABASE_PASSWORD` (default: `mapstash`)
+  createdb mapstash_db
+  createuser mapstash
+  psql -c "ALTER USER mapstash WITH PASSWORD 'mapstash';"
+  psql -c "GRANT ALL PRIVILEGES ON DATABASE mapstash_db TO mapstash;"
 
-Or configure in `application-local.properties`:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
-spring.datasource.username=your-db-username
-spring.datasource.password=your-db-password
-```
+- Environment variables (defaults used if not set):
+  DATABASE_URL (jdbc:postgresql://localhost:5432/mapstash_db)
+  DATABASE_USER (mapstash)
+  DATABASE_PASSWORD (mapstash)
 
-> **Example**: For local development with the default setup from `make create-db`, use `mapstash` for both username and password.
+- Note: Flyway runs migrations automatically on startup.
 
-> **Note**: Flyway will automatically create and migrate the database schema on first run.
+3) Mapbox token
 
-### 3. Configure Mapbox Token
+- Recommended: set as environment variable:
 
-Get your free Mapbox token from [https://account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/)
+  export MAPBOX_TOKEN=pk.your-token-here
 
-Then set it in one of these ways:
+- Alternatively, copy and edit the local properties template:
 
-**Option A: Environment Variable (Recommended)**
-```bash
-export MAPBOX_TOKEN=your-token-here
-```
+  cp src/main/resources/application-local.properties.template src/main/resources/application-local.properties
+  Edit mapstash.mapbox.token=pk.your-actual-token-here
 
-**Option B: Local Properties File (Recommended for Development)**
+4) Build
 
-Copy the template and add your token:
-```bash
-cp src/main/resources/application-local.properties.template src/main/resources/application-local.properties
-```
+- make build              # with tests
+- mvn clean package       # with tests
+- mvn clean package -DskipTests
 
-Edit `application-local.properties` and add your token:
-```properties
-server.port=4200
-mapstash.mapbox.token=pk.your-actual-token-here
-```
+5) Run
 
-> **Note**: The local profile automatically uses port 4200 for development. This profile is activated automatically when using `make run` or `mvn spring-boot:run -Dspring-boot.run.profiles=local`.
+- make run
+- mvn spring-boot:run -Dspring-boot.run.profiles=local
+- java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 
-**Option C: Direct Configuration**
+6) Open
 
-Edit `src/main/resources/application.properties` and replace the placeholder:
-```properties
-mapstash.mapbox.token=pk.your-actual-token-here
-```
+- http://localhost:4200 (local profile uses port 4200; production defaults to 8080)
 
-### 4. Build the Application
+Project structure (high-level)
 
-**Using Makefile (Recommended):**
-```bash
-make build              # Build with tests
-make build-skip-tests   # Build without tests (faster)
-```
-
-**Using Maven directly:**
-```bash
-mvn clean package              # Build with tests
-mvn clean package -DskipTests  # Build without tests
-```
-
-### 5. Run the Application
-
-**Using Makefile (Recommended):**
-```bash
-make run
-```
-
-**Using Maven directly:**
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-**Or run the JAR file:**
-```bash
-java -jar target/mapstash-0.1.0-SNAPSHOT.jar
-```
-
-### 6. Access the Application
-
-Open your browser and navigate to:
-```
-http://localhost:4200
-```
-
-> **Note**: Development uses port 4200 (local profile). Production deployments default to port 8080 unless configured otherwise.
-
-## Usage
-
-1. **Upload a GPX File**
-   - Click "Choose GPX File" on the home page
-   - Select a `.gpx` file from your device
-   - Click "Upload"
-
-2. **View Your Track**
-   - After upload, you'll be automatically redirected to the map view
-   - Or click "View Map" next to any file in the list
-
-3. **Interact with the Map**
-   - Zoom and pan the map
-   - Click on waypoints to see details
-   - Click on track lines to see track names
-   - Use the navigation controls in the bottom-right
-
-4. **Manage Files**
-   - View all uploaded files on the home page
-   - Delete files you no longer need
-   - Upload multiple files to compare
-
-## Project Structure
-
-```
 mapstash/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                              # GitHub Actions CI workflow
+├── .github/workflows/ci.yml
 ├── src/
-│   ├── main/
-│   │   ├── java/com/mapstash/
-│   │   │   ├── MapStashApplication.java      # Main application class
-│   │   │   ├── controller/
-│   │   │   │   └── GpxController.java        # Web controller
-│   │   │   ├── service/
-│   │   │   │   ├── GpxService.java           # GPX parsing & conversion
-│   │   │   │   └── FileStorageService.java   # File management
-│   │   │   ├── model/
-│   │   │   │   └── GpxFile.java              # JPA entity
-│   │   │   └── repository/
-│   │   │       └── GpxFileRepository.java    # Spring Data JPA repository
-│   │   └── resources/
-│   │       ├── application.properties         # Configuration
-│   │       ├── db/migration/                  # Flyway database migrations
-│   │       ├── templates/                     # Thymeleaf templates
-│   │       │   ├── index.html                # Home page
-│   │       │   ├── map.html                  # Map view
-│   │       │   └── error.html                # Error page
-│   │       └── static/                        # Static assets
-│   └── test/
-│       └── java/com/mapstash/
-│           └── service/
-│               └── GpxServiceTest.java        # Unit tests
-├── uploads/                                    # GPX file storage (created at runtime)
-├── Makefile                                    # Build shortcuts
-├── pom.xml                                     # Maven configuration
+│   ├── main/java/com/mapstash/
+│   │   ├── MapStashApplication.java
+│   │   ├── controller/GpxController.java
+│   │   ├── service/GpxService.java
+│   │   ├── service/FileStorageService.java
+│   │   ├── model/GpxFile.java
+│   │   ├── repository/GpxFileRepository.java
+│   │   └── config/NativeRuntimeHints.java   # native-image reflection/runtime hints
+│   └── resources/
+│       ├── application.properties
+│       ├── application-local.properties.template
+│       ├── db/migration/
+│       └── templates/ (index.html, map.html, error.html)
+├── uploads/  # created at runtime (ensure write permission)
+├── Makefile
+├── pom.xml
 └── README.md
-```
 
-## Configuration
+Important files to read first (for contributors)
 
-Key configuration properties in `application.properties`:
+- src/main/java/com/mapstash/controller/GpxController.java — web routes & templates
+- src/main/java/com/mapstash/service/GpxService.java — GPX → GeoJSON conversion
+- src/main/java/com/mapstash/service/FileStorageService.java — uploads, checksums, disk storage
+- src/main/java/com/mapstash/config/NativeRuntimeHints.java — reflection/runtime hints required for native images
+- src/main/resources/templates/map.html — client-side Mapbox initialization (GeoJSON embedding)
 
-```properties
-# Server port (default for production)
-server.port=8080
+Configuration (excerpts)
 
-# Database configuration
 spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/mapstash_db}
 spring.datasource.username=${DATABASE_USER:mapstash}
 spring.datasource.password=${DATABASE_PASSWORD:mapstash}
-
-# JPA/Hibernate
-spring.jpa.hibernate.ddl-auto=none
-spring.jpa.show-sql=false
-
-# Flyway (database migrations)
-spring.flyway.enabled=true
-spring.flyway.baseline-on-migrate=true
-
-# File upload limits
 spring.servlet.multipart.max-file-size=50MB
-spring.servlet.multipart.max-request-size=50MB
-
-# Upload directory
 mapstash.upload.directory=uploads
-
-# Mapbox token
 mapstash.mapbox.token=${MAPBOX_TOKEN:your-token-here}
-```
 
-### Local Development Configuration
+API endpoints
 
-When using the `local` profile (`application-local.properties`):
+- GET / — home page and upload
+- POST /upload — upload a GPX file
+- GET /map/{fileId} — map view
+- POST /delete/{fileId} — delete file and metadata
+- GET /api/gpx/{fileId} — raw GeoJSON (useful for tests)
 
-```properties
-# Development server port
-server.port=4200
+Testing
 
-# Database configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/mapstash_db
-spring.datasource.username=your-db-username
-spring.datasource.password=your-db-password
+- Run tests:
+  make test
+  mvn test
+- Run specific:
+  mvn test -Dtest=GpxServiceTest
+  mvn test -Dtest=GpxServiceTest#testConvertToGeoJson_WithValidGpxFile
+- Recommendation: add test-fixtures/ for deterministic GPX sample files. Consider Testcontainers for integration DB tests.
 
-# Mapbox token
-mapstash.mapbox.token=pk.your-actual-token-here
-```
+Native image (GraalVM) notes
 
-> **Note**: Replace `your-db-username` and `your-db-password` with your actual credentials. For the default local setup, these would both be `mapstash`.
+- Use SDKMAN to install/use GraalVM JDK 25+ for native builds
+- Native image requires reflection/runtime hints — this project registers hints in NativeRuntimeHints.java. If you hit MissingReflectionRegistrationError, add the missing class to NativeRuntimeHints and rebuild.
+- Build example:
 
-The local profile is automatically activated when using:
-- `make run`
-- `mvn spring-boot:run -Dspring-boot.run.profiles=local`
+  sdk use java 25.x-graal
+  mvn -Pnative native:compile
 
-## API Endpoints
+- Output: target/mapstash
 
-- `GET /` - Home page with file list and upload form
-- `POST /upload` - Upload a GPX file
-- `GET /map/{fileId}` - View map for a specific file
-- `POST /delete/{fileId}` - Delete a file
-- `GET /api/gpx/{fileId}` - Get GeoJSON for a file (REST API)
+Troubleshooting (common)
 
-## Development
+- Map not loading: check MAPBOX_TOKEN, browser console, network tab
+- DB: ensure Postgres running, check credentials, run pg_isready
+- Uploads: check uploads/ write permission; files under 50MB; only .gpx accepted
+- Port: local uses 4200; change in application-local.properties or application.properties
 
-### Quick Start Commands
+Future improvements
 
-```bash
-make run                # Run with local profile (port 4200)
-make build              # Build JAR with tests
-make build-skip-tests   # Build JAR without tests
-make jar                # Alias for 'make build'
-make test               # Run unit tests
-make test-verbose       # Run tests with verbose output
-make native             # Build GraalVM native image
-make native-test        # Run tests in native mode
-```
+- Track statistics (distance, elevation)
+- Search & filter uploaded files
+- Multiple-track comparison
+- Mobile UI improvements and dark mode
+- User authentication
+- Integration tests with Testcontainers
 
-### Testing
+Contributing & developer notes
 
-The project includes comprehensive unit tests with GitHub Actions CI/CD integration.
+- See CLAUDE.md for repository-specific developer guidance (native-image hints, testing tips, quick commands)
+- Follow commit & PR conventions in PR contribution docs (if present)
 
-**Run Tests Locally:**
-```bash
-# Using Makefile
-make test
+License
 
-# Or with Maven
-mvn test
+- MIT — see LICENSE
 
-# Run specific test class
-mvn test -Dtest=GpxServiceTest
+Acknowledgments
 
-# Run specific test method
-mvn test -Dtest=GpxServiceTest#testConvertToGeoJson_WithValidGpxFile
-```
+- Mapbox, JPX (jenetics/jpx), Spring Boot, Thymeleaf
 
-**Continuous Integration:**
-
-Every push to `main` and all pull requests automatically trigger the CI pipeline:
-- ✅ Compiles the code
-- ✅ Runs all unit tests
-- ✅ Uploads test results as artifacts
-
-View CI status: Check the "Actions" tab in the GitHub repository
-
-**Test Coverage:**
-- `GpxServiceTest`: Tests GPX to GeoJSON conversion and bounds calculation
-- More tests coming soon for integration testing
-
-### Hot Reload
-
-The application includes Spring Boot DevTools for automatic restart during development:
-
-```bash
-make run
-# or
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-Edit any Java file and it will automatically restart. Template changes are reflected immediately.
-
-### Building for Production
-
-**Standard JAR Build:**
-```bash
-make build-skip-tests
-java -jar target/mapstash-0.1.0-SNAPSHOT.jar
-```
-
-Or with Maven:
-```bash
-mvn clean package -DskipTests
-java -jar target/mapstash-0.1.0-SNAPSHOT.jar
-```
-
-**GraalVM Native Image Build:**
-
-For faster startup times and lower memory footprint, you can build a native executable:
-
-Prerequisites:
-- GraalVM 25 installed (recommended: use SDKMAN)
-  ```bash
-  sdk install java 25.0.2-graalce
-  sdk use java 25.0.2-graalce
-  ```
-
-Build native image:
-```bash
-# Using Makefile (recommended)
-make native
-
-# Or with Maven directly
-mvn -Pnative native:compile
-```
-
-The native executable will be created at `target/mapstash` and can be run directly:
-```bash
-./target/mapstash
-```
-
-**Native Image Benefits:**
-- ⚡ **Fast Startup**: Starts in milliseconds instead of seconds
-- 💾 **Low Memory**: Significantly reduced memory footprint
-- 📦 **Single Binary**: No JVM required on the target system
-- 🚀 **Production Ready**: Ideal for containerized deployments
-
-**Native Image Considerations:**
-- Initial build takes longer (5-10 minutes)
-- Requires more memory during build (8GB recommended)
-- Some reflection-based features may require configuration
-- Testing native builds: `make native-test`
-
-## Troubleshooting
-
-### Database Connection Issues
-
-- **PostgreSQL Not Running**: Check if PostgreSQL is running: `pg_isready`
-- **Database Doesn't Exist**: Run `make create-db` or create manually
-- **Connection Refused**: Verify database is listening on port 5432
-- **Authentication Failed**: Check username/password in configuration
-- **Flyway Migration Errors**: Check logs for schema migration issues
-
-### Map Not Loading
-
-- **Check Mapbox Token**: Ensure your token is correctly set and valid
-- **Browser Console**: Open browser dev tools to check for errors
-- **Network Tab**: Verify Mapbox API requests are succeeding
-
-### File Upload Fails
-
-- **File Size**: Ensure file is under 50MB
-- **File Type**: Only `.gpx` files are accepted
-- **Permissions**: Check write permissions on the `uploads/` directory
-- **Database Error**: Check database connection and Flyway migrations
-
-### Port Already in Use
-
-For development, the local profile uses port 4200. For production, the default is 8080.
-
-Change the port in `application.properties` (production) or `application-local.properties` (development):
-```properties
-server.port=8081
-```
-
-### Tests Failing
-
-- **Database Required**: Some tests may require a running PostgreSQL instance
-- **Check Logs**: Run tests with verbose output: `make test-verbose`
-- **Clean Build**: Try `mvn clean test` to ensure no stale artifacts
-
-## Future Enhancements
-
-- ✅ Database storage for metadata (Implemented - REQ-008)
-- ✅ Continuous Integration with GitHub Actions (Implemented)
-- 📈 Track statistics (distance, elevation, duration)
-- 🔍 Search and filter capabilities
-- 🎯 Multiple track comparison
-- 📱 Mobile-responsive design improvements
-- 🌙 Dark mode support
-- 🔐 User authentication
-- 🧪 Integration tests with Testcontainers
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Acknowledgments
-
-- [Mapbox](https://www.mapbox.com/) for the amazing mapping platform
-- [JPX Library](https://github.com/jenetics/jpx) for GPX parsing
-- [Spring Boot](https://spring.io/projects/spring-boot) for the robust framework
-- [Thymeleaf](https://www.thymeleaf.org/) for server-side templating
-
----
+Footer
 
 Made with ❤️ and ☕ for outdoor enthusiasts and GPS track lovers!

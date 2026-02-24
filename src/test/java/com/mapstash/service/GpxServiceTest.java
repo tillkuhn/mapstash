@@ -6,8 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.net.URL;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -170,5 +173,48 @@ class GpxServiceTest {
 
         String name = gpxService.extractName(gpxFile);
         assertNull(name, "Should return null when no names are found");
+    }
+
+    @Test
+    void testConvertToGeoJson_WithMultiSegmentFixture() throws Exception {
+        Path gpxFile = pathForResource("/test-fixtures/multi-segment.gpx");
+        String geoJson = gpxService.convertToGeoJson(gpxFile);
+
+        assertNotNull(geoJson, "GeoJSON should not be null");
+        assertTrue(geoJson.contains("FeatureCollection"), "Should contain FeatureCollection type");
+        assertTrue(geoJson.contains("LineString"), "Should contain LineString geometry");
+        assertTrue(geoJson.contains("MultiSegment Track"), "Should contain the multi-segment track name");
+    }
+
+    @Test
+    void testConvertToGeoJson_WithMultiTrackFixture() throws Exception {
+        Path gpxFile = pathForResource("/test-fixtures/multi-track.gpx");
+        String geoJson = gpxService.convertToGeoJson(gpxFile);
+
+        assertNotNull(geoJson, "GeoJSON should not be null");
+        assertTrue(geoJson.contains("FeatureCollection"), "Should contain FeatureCollection type");
+        assertTrue(geoJson.contains("Track One"), "Should contain first track name");
+        assertTrue(geoJson.contains("Track Two"), "Should contain second track name");
+
+        int lineStringCount = countOccurrences(geoJson, "LineString");
+        assertTrue(lineStringCount >= 2, "Should contain at least two LineString geometries for multiple tracks");
+    }
+
+    // Helper to load test resource as Path
+    private Path pathForResource(String resourcePath) throws URISyntaxException {
+        URL resource = getClass().getResource(resourcePath);
+        assertNotNull(resource, "Test resource not found: " + resourcePath);
+        return Paths.get(resource.toURI());
+    }
+
+    // Simple occurrence counter
+    private int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) != -1) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 }
