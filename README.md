@@ -4,31 +4,36 @@ A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) 
 
 ![](./preview.png)
 
-Quick cheat sheet (most-used commands)
+## Quick cheat sheet (most-used commands)
 
-- Development (hot reload, local profile):
-  - make run
-  - mvn spring-boot:run -Dspring-boot.run.profiles=local
-- Build:
-  - make build              # full build with tests
-  - make build-skip-tests   # build without tests
-  - make jar                # alias for build
-- Run artifact:
-  - java -jar target/mapstash-0.1.0-SNAPSHOT.jar
-- GraalVM native build (short):
-  - export JAVA_HOME=/path/to/graalvm
-  - mvn clean package -Pnative -DskipTests
-  - ./target/mapstash
-- Tests:
-  - mvn test
-  - mvn test -Dtest=GpxServiceTest
-  - mvn test -Dtest=GpxServiceTest#testConvertToGeoJson
-- Quick debug:
-  - pg_isready
-  - echo $MAPBOX_TOKEN
-  - curl -s http://localhost:4200/api/gpx/{fileId}
+### Development
+- make run
+- mvn spring-boot:run -Dspring-boot.run.profiles=local
 
-Features
+### Build
+- make build              # full build with tests
+- make build-skip-tests   # build without tests
+- make jar                # alias for build
+
+### Run artifact
+- java -jar target/mapstash-0.1.0-SNAPSHOT.jar
+
+### GraalVM native build (short)
+- export JAVA_HOME=/path/to/graalvm
+- mvn clean package -Pnative -DskipTests
+- ./target/mapstash
+
+### Tests
+- mvn test
+- mvn test -Dtest=GpxServiceTest
+- mvn test -Dtest=GpxServiceTest#testConvertToGeoJson
+
+### Quick debug
+- pg_isready
+- echo $MAPBOX_TOKEN
+- curl -s http://localhost:4200/api/gpx/{fileId}
+
+## Features
 
 - Upload GPX files (drag-and-drop)
 - Interactive maps (Mapbox GL JS)
@@ -36,7 +41,7 @@ Features
 - File metadata persisted in PostgreSQL (with PostGIS)
 - Server-side rendering with Thymeleaf for fast page loads
 
-Technology stack (guidance)
+## Technology stack (guidance)
 
 - Backend: Spring Boot (4.x compatible; Java 25 recommended for modern builds)
 - Database: PostgreSQL + PostGIS
@@ -47,7 +52,7 @@ Technology stack (guidance)
 - Data format: GeoJSON
 - CI: GitHub Actions
 
-Prerequisites
+## Prerequisites
 
 - Java 25+ (recommended) — SDKMAN is recommended for managing GraalVM JDKs
 - Maven 3.6+
@@ -55,14 +60,14 @@ Prerequisites
 - Mapbox access token (create a free token at https://account.mapbox.com/access-tokens/)
 - For native builds: GraalVM (see Native image notes)
 
-Getting started (local dev)
+## Getting started (local dev)
 
-1) Clone
+### 1) Clone
 
   git clone <repository-url>
   cd mapstash
 
-2) Database
+### 2) Database
 
 - Create database and user (example):
 
@@ -72,13 +77,13 @@ Getting started (local dev)
   psql -c "GRANT ALL PRIVILEGES ON DATABASE mapstash_db TO mapstash;"
 
 - Environment variables (defaults used if not set):
-  DATABASE_URL (jdbc:postgresql://localhost:5432/mapstash_db)
-  DATABASE_USER (mapstash)
-  DATABASE_PASSWORD (mapstash)
+  - DATABASE_URL (jdbc:postgresql://localhost:5432/mapstash_db)
+  - DATABASE_USER (mapstash)
+  - DATABASE_PASSWORD (mapstash)
 
 - Note: Flyway runs migrations automatically on startup.
 
-3) Mapbox token
+### 3) Mapbox token
 
 - Recommended: set as environment variable:
 
@@ -89,23 +94,23 @@ Getting started (local dev)
   cp src/main/resources/application-local.properties.template src/main/resources/application-local.properties
   Edit mapstash.mapbox.token=pk.your-actual-token-here
 
-4) Build
+### 4) Build
 
 - make build              # with tests
 - mvn clean package       # with tests
 - mvn clean package -DskipTests
 
-5) Run
+### 5) Run
 
 - make run
 - mvn spring-boot:run -Dspring-boot.run.profiles=local
 - java -jar target/mapstash-0.1.0-SNAPSHOT.jar
 
-6) Open
+### 6) Open
 
 - http://localhost:4200 (local profile uses port 4200; production defaults to 8080)
 
-Project structure (high-level)
+## Project structure (high-level)
 
 mapstash/
 ├── .github/workflows/ci.yml
@@ -128,7 +133,7 @@ mapstash/
 ├── pom.xml
 └── README.md
 
-Important files to read first (for contributors)
+## Important files to read first (for contributors)
 
 - src/main/java/com/mapstash/controller/GpxController.java — web routes & templates
 - src/main/java/com/mapstash/service/GpxService.java — GPX → GeoJSON conversion
@@ -136,7 +141,7 @@ Important files to read first (for contributors)
 - src/main/java/com/mapstash/config/NativeRuntimeHints.java — reflection/runtime hints required for native images
 - src/main/resources/templates/map.html — client-side Mapbox initialization (GeoJSON embedding)
 
-Configuration (excerpts)
+## Configuration (excerpts)
 
 spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/mapstash_db}
 spring.datasource.username=${DATABASE_USER:mapstash}
@@ -145,7 +150,7 @@ spring.servlet.multipart.max-file-size=50MB
 mapstash.upload.directory=uploads
 mapstash.mapbox.token=${MAPBOX_TOKEN:your-token-here}
 
-API endpoints
+## API endpoints
 
 - GET / — home page and upload
 - POST /upload — upload a GPX file
@@ -153,17 +158,17 @@ API endpoints
 - POST /delete/{fileId} — delete file and metadata
 - GET /api/gpx/{fileId} — raw GeoJSON (useful for tests)
 
-Testing
+## Testing
 
 - Run tests:
-  make test
-  mvn test
+  - make test
+  - mvn test
 - Run specific:
-  mvn test -Dtest=GpxServiceTest
-  mvn test -Dtest=GpxServiceTest#testConvertToGeoJson_WithValidGpxFile
+  - mvn test -Dtest=GpxServiceTest
+  - mvn test -Dtest=GpxServiceTest#testConvertToGeoJson_WithValidGpxFile
 - Recommendation: add test-fixtures/ for deterministic GPX sample files. Consider Testcontainers for integration DB tests.
 
-Native image (GraalVM) notes
+## Native image (GraalVM) notes
 
 - Use SDKMAN to install/use GraalVM JDK 25+ for native builds
 - Native image requires reflection/runtime hints — this project registers hints in NativeRuntimeHints.java. Do NOT add static native-image JSON files (for example reflect-config.json or reachability-metadata.json) to the repository — the AOT/native-image process used here uses the RuntimeHints approach and static JSON files will be overwritten or ignored.
@@ -178,14 +183,14 @@ Native image (GraalVM) notes
 
 - Output: target/mapstash
 
-Troubleshooting (common)
+## Troubleshooting (common)
 
 - Map not loading: check MAPBOX_TOKEN, browser console, network tab
 - DB: ensure Postgres running, check credentials, run pg_isready
 - Uploads: check uploads/ write permission; files under 50MB; only .gpx accepted
 - Port: local uses 4200; change in application-local.properties or application.properties
 
-Future improvements
+## Future improvements
 
 - Track statistics (distance, elevation)
 - Search & filter uploaded files
@@ -194,19 +199,19 @@ Future improvements
 - User authentication
 - Integration tests with Testcontainers
 
-Contributing & developer notes
+## Contributing & developer notes
 
 - See CLAUDE.md for repository-specific developer guidance (native-image hints, testing tips, quick commands)
 - Follow commit & PR conventions in PR contribution docs (if present)
 
-License
+## License
 
 - MIT — see LICENSE
 
-Acknowledgments
+## Acknowledgments
 
 - Mapbox, JPX (jenetics/jpx), Spring Boot, Thymeleaf
 
-Footer
+## Footer
 
 Made with ❤️ and ☕ for outdoor enthusiasts and GPS track lovers!
