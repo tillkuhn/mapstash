@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.flywaydb.core.api.output.errors.FlywaySqlExceptionToErrorObjectConverter;
+import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlNoDriversForInteractiveAuthException;
 import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlNoIntegratedAuthException;
 import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlServerUntrustedCertificateSqlException;
+import org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlUnableToConnectToDbException;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
 import org.geolatte.geom.codec.PostgisWkbV2Encoder;
 import org.geolatte.geom.crs.CrsRegistry;
@@ -72,6 +75,14 @@ public class NativeRuntimeHints {
           FlywaySqlServerUntrustedCertificateSqlException.class, CONSTRUCTORS_AND_METHODS);
       reflection.registerType(
               FlywaySqlNoIntegratedAuthException.class, CONSTRUCTORS_AND_METHODS);
+      // https://github.com/flyway/flyway/issues/2927
+      reflection.registerType(
+              FlywaySqlNoDriversForInteractiveAuthException.class, CONSTRUCTORS_AND_METHODS);
+      reflection.registerType(
+              FlywaySqlExceptionToErrorObjectConverter.class, CONSTRUCTORS_AND_METHODS);
+      reflection.registerType(
+              FlywaySqlUnableToConnectToDbException.class, CONSTRUCTORS_AND_METHODS);
+
       reflection.registerType(
           TypeReference.of("org.hibernate.spatial.HSMessageLogger_$logger"),
           typeHint ->

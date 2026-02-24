@@ -61,9 +61,21 @@ native: ## Build GraalVM native image (requires GraalVM)
 native-test: ## Run tests with native image
 	JAVA_HOME=$(GRAALVM_HOME) mvn -PnativeTest test
 
+native-docker: ## Run build multistage docker image with native image
+	docker build -t $(APPNAME):latest -f Dockerfile.native .
+
+native-docker-run-dev: ## Run native docker	image DEV profile with external DB
+	docker run --rm --name $(APPNAME) -p 8080:8080 \
+		-e "MAPBOX_TOKEN=$(shell grep mapstash.mapbox.token src/main/resources/application-dev.properties|cut -d= -f2-|xargs)" \
+		-e "SPRING_DATASOURCE_URL=$(shell grep spring.datasource.url src/main/resources/application-dev.properties|cut -d= -f2-|xargs)" \
+		-e "SPRING_DATASOURCE_USERNAME=$(shell grep spring.datasource.username src/main/resources/application-dev.properties|cut -d= -f2-|xargs)" \
+		-e "SPRING_DATASOURCE_PASSWORD=$(shell grep spring.datasource.password src/main/resources/application-dev.properties|cut -d= -f2-|xargs)" \
+	 $(APPNAME):latest
+
 # https://developers.redhat.com/articles/2024/05/21/native-memory-tracking-graalvm-native-image#getting_started_with_nmt_in_native_image
 native-run: ## Run native image
-	MAPBOX_TOKEN=$(shell grep mapstash.mapbox.token src/main/resources/application-local.properties|cut -d= -f2|xargs) ./target/mapstash -XX:+PrintNMTStatistics # -XX:StartFlightRecording=filename=target/recording.jfr
+	MAPBOX_TOKEN=$(shell grep mapstash.mapbox.token src/main/resources/application-local.properties|cut -d= -f2-|xargs) \
+	./target/$(APPNAME) -XX:+PrintNMTStatistics # -XX:StartFlightRecording=filename=target/recording.jfr
 
 # https://www.graalvm.org/jdk25/reference-manual/native-image/debugging-and-diagnostics/JFR/
 native-jfr: ## Show native NativeMemoryUsage target/recording.jfr
