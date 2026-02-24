@@ -97,6 +97,13 @@ Testing guidance
 - When changing conversion logic (GpxService), add tests that load sample GPX fixtures and assert the produced GeoJSON structure (FeatureCollection, geometry types, properties).
 - Integration tests that require DB should use the same database configuration; Flyway migrations will run automatically on startup.
 
+Test fixtures
+- Deterministic GPX fixtures are stored under src/test/resources/test-fixtures (example files: sample.gpx, multi-segment.gpx, multi-track.gpx). Use these fixtures in unit tests by loading them as resources, for example:
+
+  Path p = Paths.get(getClass().getResource("/test-fixtures/sample.gpx").toURI());
+
+- When adding new fixtures, place them in the same directory and reference them from tests. Keep fixtures small and focused (one feature type per file when possible) to make assertions simple and deterministic.
+
 Suggested repository improvements (applied here)
 1. Quick commands cheat sheet added at top for immediate onboarding and common tasks.
 2. Curl example for fetching GeoJSON added to quick commands (useful for integration testing):
