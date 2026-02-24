@@ -5,7 +5,7 @@
       {"pattern": "\\Qtemplates/*.html\\E"},
       {"pattern": "\\Qstatic/**\\E"},
       {"pattern": "\\Qapplication.properties\\E"},
-      {"pattern": "\\Qapplication-*.properties\\E"},
+      {"pattern": "\\Qapplication-prod.properties\\E"},
       {"pattern": "\\Qorg/springframework/boot/logging/**\\E"},
       {"pattern": "spatial_ref_sys.txt"}
     ]
