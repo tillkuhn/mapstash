@@ -9,15 +9,15 @@ clean: ## mvn clean project
 	mvn clean
 
 build: clean ## Build Spring Boot JAR with tests
-	LANG=en mvn package
+	mvn package
 
 build-skip-tests: ## Build Spring Boot JAR without tests
-	LANG=en mvn clean package -DskipTests
+	mvn clean package -DskipTests
 
 jar: build ## Alias for build target
 
-run: ## mvn spring-boot:run with local profile
-	LANG=en mvn spring-boot:run -Dspring-boot.run.profiles=$(PROFILE)
+run: ## mvn spring-boot:run with local profile unless started with PROFILE=dev make run
+	mvn spring-boot:run -Dspring-boot.run.profiles=$(PROFILE)
 
 test: ## Run unit tests
 	mvn test

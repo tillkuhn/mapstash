@@ -113,7 +113,8 @@ public class GpxController {
 
   // Overview map of all start points
   @GetMapping("/overview")
-  public String overview(Model model) {
+  public String overview(
+      @RequestParam(value = "filter", required = false) String filter, Model model) {
     com.fasterxml.jackson.databind.ObjectMapper objectMapper =
         new com.fasterxml.jackson.databind.ObjectMapper();
     com.fasterxml.jackson.databind.node.ObjectNode featureCollection =
@@ -122,7 +123,20 @@ public class GpxController {
     com.fasterxml.jackson.databind.node.ArrayNode features = featureCollection.putArray("features");
     java.util.DoubleSummaryStatistics lonStats = new java.util.DoubleSummaryStatistics();
     java.util.DoubleSummaryStatistics latStats = new java.util.DoubleSummaryStatistics();
+
+    // Case-insensitive filter for partial name matching
+    String filterLowerCase = (filter != null && !filter.trim().isEmpty())
+        ? filter.trim().toLowerCase()
+        : null;
+
     for (GpxFile file : gpxFileRepository.findAll()) {
+      // Apply name filter if provided
+      if (filterLowerCase != null && file.getName() != null) {
+        if (!file.getName().toLowerCase().contains(filterLowerCase)) {
+          continue; // Skip this file if name doesn't match filter
+        }
+      }
+
       org.locationtech.jts.geom.Point pt = file.getStartPoint();
       if (pt == null) continue;
       double lon = pt.getX();
@@ -154,8 +168,10 @@ public class GpxController {
     boolean hasGeoFeatures = features.size() > 0;
     model.addAttribute("geoJson", geoJsonString);
     model.addAttribute("hasGeoFeatures", hasGeoFeatures);
+    model.addAttribute("tourCount", features.size());
     model.addAttribute("bounds", bounds);
     model.addAttribute("mapboxToken", mapboxToken);
+    model.addAttribute("filter", filter != null ? filter : "");
     return "overview";
   }
 }

@@ -13,15 +13,45 @@
         .nav-link { display:inline-block; margin-bottom:1em; color:#667eea; text-decoration:none; }
         #overview-map { width:100%; height:550px; border-radius:8px; margin-bottom:1.5em;}
         .empty-state { color:#718096; text-align:center; margin:3em 0;}
+        .filter-container { margin:1.5em 0; display:flex; gap:0.75em; align-items:center; }
+        .filter-input { flex:1; max-width:400px; padding:0.75em 1em; border:2px solid #e2e8f0; border-radius:8px; font-size:1em; transition:border-color 0.2s; }
+        .filter-input:focus { outline:none; border-color:#667eea; }
+        .filter-label { font-weight:500; color:#4a5568; }
+        .clear-filter { padding:0.5em 1em; background:#f7fafc; border:2px solid #e2e8f0; border-radius:6px; cursor:pointer; color:#4a5568; text-decoration:none; transition:all 0.2s; display:inline-block; }
+        .clear-filter:hover { background:#edf2f7; border-color:#cbd5e0; }
+        .result-count { color:#718096; font-size:0.95em; margin-left:auto; }
     </style>
 </head>
 <body>
 <div class="container">
     <a href="/" class="nav-link">&#8592; Back to Home</a>
     <h1>Overview: All Tour Start Points</h1>
+
+    <!-- Filter Form -->
+    <form method="get" action="/overview" class="filter-container">
+        <label for="filter" class="filter-label">Filter by name:</label>
+        <input type="text"
+               id="filter"
+               name="filter"
+               class="filter-input"
+               placeholder="Search tours by name..."
+               th:value="${filter}"
+               autocomplete="off">
+        <button type="submit" style="display:none;">Search</button>
+        <a href="/overview" class="clear-filter" th:if="${filter != null && !filter.isEmpty()}">Clear</a>
+        <span class="result-count" th:if="${hasGeoFeatures}">
+            <span id="tour-count">[[${tourCount}]]</span> tour(s) found
+        </span>
+    </form>
+
     <div id="overview-map"></div>
     <div th:unless="${hasGeoFeatures}" class="empty-state">
-        No GPX tours with valid start points found.
+        <span th:if="${filter != null && !filter.isEmpty()}">
+            No tours found matching "<strong>[[${filter}]]</strong>". <a href="/overview" style="color:#667eea;">Clear filter</a>
+        </span>
+        <span th:unless="${filter != null && !filter.isEmpty()}">
+            No GPX tours with valid start points found.
+        </span>
     </div>
 </div>
 
@@ -53,6 +83,30 @@
     }
 
     const firstCoord = getFirstCoordinate(geoJson);
+
+    // Real-time filter on client side
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterInput = document.getElementById('filter');
+        if (filterInput) {
+            // Submit form when user stops typing (debounce)
+            let timeout = null;
+            filterInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    this.form.submit();
+                }, 500); // Wait 500ms after user stops typing
+            });
+
+            // Allow Enter key to submit immediately
+            filterInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    clearTimeout(timeout);
+                    this.form.submit();
+                }
+            });
+        }
+    });
 
     if (geoJson.features && geoJson.features.length) {
         mapboxgl.accessToken = mapboxToken;
