@@ -2,7 +2,9 @@
 
 A Spring Boot application for storing and visualizing GPX (GPS Exchange Format) files on interactive maps using Mapbox GL JS.
 
-![](./preview.png)
+![](docs/preview.png)
+
+![](docs/startpoints.png)
 
 ## Quick cheat sheet (most-used commands)
 
